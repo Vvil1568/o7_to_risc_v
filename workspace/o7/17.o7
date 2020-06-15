@@ -1,0 +1,27 @@
+MODULE Init;
+
+ IMPORT Math, Draw;
+
+ VAR img: Draw.Image; t: REAL;
+
+ PROCEDURE Setup;
+ BEGIN
+  Draw.SetSize(500, 500);
+  Draw.SetFrameRate(20);
+  (* загрузить изображение возможно в профиле пользователя *)
+  img := Draw.LoadImage("https://modela.online/res/33/oberon.jpg")
+ END Setup;
+ 
+ PROCEDURE Do*;
+ BEGIN
+  t := t + 0.01;
+  Draw.SetBackground(0H);
+  Draw.PlaceImage(img, 200.0 + Math.Cos(t) * 150.0, 200.0 + Math.Sin(t) * 150.0);
+ END Do;
+
+BEGIN
+ Draw.CreateCanvas("log");
+ Draw.SetSetupProc(Setup);
+ Draw.SetDrawProc(Do);
+ Draw.Start
+END Init.

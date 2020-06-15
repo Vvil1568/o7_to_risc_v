@@ -1,0 +1,53 @@
+(* Рекурсивное дерево *)
+MODULE Tree;
+ IMPORT Draw;
+
+ VAR theta: REAL;
+
+ PROCEDURE Branch(h: REAL);
+ BEGIN
+  h := 0.66 * h;
+  IF h > 2.0 THEN
+   Draw.PushMatrix;
+   Draw.Rotate(theta);
+   Draw.Line(0.0, 0.0, 0.0, -h);
+   Draw.Translate(0.0, -h);
+   Branch(h);
+   Draw.PopMatrix;
+   Draw.PushMatrix;
+   Draw.Rotate(-theta);
+   Draw.Line(0.0, 0.0, 0.0, -h);
+   Draw.Translate(0.0, -h);
+   Branch(h);
+   Draw.PopMatrix;     
+  END
+ END Branch;
+
+ PROCEDURE Setup;
+ BEGIN
+  Draw.SetSize(600, 360);
+  Draw.SetBackground(0H);
+  Draw.SetFrameRate(30);
+ END Setup;
+ 
+ PROCEDURE DrawTree;
+ VAR a : REAL;
+ BEGIN
+  Draw.SetBackground(0H);
+  Draw.Stroke(0FF00FF00H);
+
+  a     := Draw.mouseX/FLT(Draw.width)*90.0;
+  theta := Draw.Radians(a);
+
+  Draw.Translate(FLT(Draw.width)/2.0, FLT(Draw.height));
+  Draw.Line(0.0, 0.0, 0.0, -120.0);
+  Draw.Translate(0.0, -120.0);
+  Branch(120.0)
+ END DrawTree;
+
+BEGIN
+ Draw.CreateCanvas("canvas");
+ Draw.SetSetupProc(Setup);
+ Draw.SetDrawProc(DrawTree);
+ Draw.Start
+END Tree.

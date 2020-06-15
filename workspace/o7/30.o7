@@ -1,0 +1,81 @@
+MODULE Snake;
+(**
+  Ivan Denisov, d.ivan.krsk@gmail.com
+  26 August 2011
+  The speed of the "snake" on LED-display dependent of resistance.
+**)
+
+IMPORT SYSTEM, LPC, Timer, ADC, Main;
+
+VAR
+  pos: INTEGER;
+  iTo7Segment: ARRAY 6 OF SET;
+  pinMap: ARRAY 7 OF INTEGER;
+
+PROCEDURE Next;
+VAR i: INTEGER; segments, pin: SET;
+BEGIN
+  IF pos < 5 THEN INC(pos) ELSE pos := 0 END;
+  segments := iTo7Segment[pos];
+  FOR i := 0 TO LEN(pinMap) - 1 DO
+    pin := {pinMap[i]};
+    IF i IN segments THEN
+      SYSTEM.PUT(LPC.IOSET, pin)
+    ELSE
+      SYSTEM.PUT(LPC.IOCLR, pin)
+    END
+  END
+END Next;
+
+PROCEDURE Run;
+VAR
+  i, speed: INTEGER;
+BEGIN
+  WHILE TRUE DO
+    Next;
+    ADC.Read(0, speed);
+    Timer.MSecDelay(speed + 10);
+  END
+END Run;
+
+PROCEDURE Setup;
+VAR selection, direction: SET;
+BEGIN
+(*    0
+     ___ 
+  5 |   | 1
+    | 6 |
+     ---
+  4 |   | 2
+    | 3 | 
+     ---     *)
+  iTo7Segment[0] := -{0,1};
+  iTo7Segment[1] := -{1,2};
+  iTo7Segment[2] := -{2,3};
+  iTo7Segment[3] := -{3,4};
+  iTo7Segment[4] := -{4,5};
+  iTo7Segment[5] := -{5,0};
+  (* Configure pin P0.22 connected to potentiometer as ADC (AD0.0) input PINSEL1 13:12 = 11 *)
+  (* Pins P0.16..P0.18, P0.26..P0.29 are GPIO Outputs *)
+  SYSTEM.GET(LPC.PINSEL1, selection);
+  SYSTEM.PUT(LPC.PINSEL1, selection + {13, 12} - {0..5, 20..27});
+  (* Configure pins P0.16..P0.18, P0.26..P0.29 as outputs *)
+  SYSTEM.GET(LPC.IODIR, direction);
+  SYSTEM.PUT(LPC.IODIR, direction + {16..18, 26..29});
+  ADC.PowerUp;
+  (* Each segment is conected to pin P0.n *)
+  (* pinMap[segment] := n *)
+  pinMap[0] := 16;
+  pinMap[1] := 17;
+  pinMap[2] := 18;
+  pinMap[3] := 26;
+  pinMap[4] := 27;
+  pinMap[5] := 28;
+  pinMap[6] := 29;
+END Setup;
+
+BEGIN
+  Setup;
+  pos := 0;
+  Run
+END Snake.

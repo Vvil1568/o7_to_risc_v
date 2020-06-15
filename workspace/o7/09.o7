@@ -1,0 +1,31 @@
+MODULE Init;
+
+IMPORT Draw;
+
+VAR
+ img: Draw.Image;
+ cycle: INTEGER;
+
+PROCEDURE Setup;
+BEGIN
+ Draw.SetSize(24, 30);
+ Draw.SetFrameRate(8);
+ (* загрузить изображение возможно в профиле пользователя *)
+ img := Draw.LoadImage("https://modela.online/res/33/player.png");
+ cycle := 0;
+END Setup;
+ 
+PROCEDURE Do;
+BEGIN
+ Draw.SetBackground(Draw.white);
+ (* изображение содержит несколько кадров и сдвигается при каждой новой отрисовке циклически *)
+ Draw.PlaceImage(img, - FLT(cycle) * 24.0, 0.0);
+ cycle := (cycle + 1) MOD 8;
+END Do;
+
+BEGIN
+ Draw.CreateCanvas("canvas");
+ Draw.SetSetupProc(Setup);
+ Draw.SetDrawProc(Do);
+ Draw.Start
+END Init.

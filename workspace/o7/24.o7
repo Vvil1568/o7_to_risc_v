@@ -1,0 +1,111 @@
+(* Парадокс лжеца *)
+MODULE Init;
+IMPORT Log, D := Draw2;
+ 
+CONST
+  bgColor = 102; btnSelected = 255; btnUnselected = 150;
+  statementColor = 255; goodColor = 0FF00CC00H; badColor = 0FFFF0000H;
+ 
+VAR
+  state1, state2, lastb: INTEGER;
+  pressed: BOOLEAN;
+ 
+PROCEDURE Setup;
+BEGIN
+  D.SetSize(600, 400);
+  state1 := 0; state2 := 0;
+END Setup;
+
+PROCEDURE Button(caption: ARRAY OF CHAR; x, y, w, h, state, nstate: INTEGER; pressable: BOOLEAN);
+  VAR rx, ry, rw, rh: REAL;
+BEGIN
+  rx := FLT(x); ry := FLT(y); rw := FLT(w); rh := FLT(h);
+  D.NoFill();
+  IF pressable THEN
+    D.Stroke(0)
+  ELSE
+    D.Stroke(btnUnselected)
+  END;
+  D.Rect(rx, ry, rw, rh);
+  IF pressable THEN
+  	IF (D.MouseX >= rx) & (D.MouseX <= rx+rw) & (D.MouseY >= ry) & (D.MouseY <= ry+rh) THEN
+  	  D.Rect(rx+5.0, ry+5.0, rw-10.0, rh-10.0);
+      lastb := nstate
+    END
+  END;
+  IF state = nstate THEN 
+  	D.String(caption, x+10, y+30, 20)
+  ELSE
+    D.Fill(btnUnselected);
+  	D.String(caption, x+10, y+30, 20);
+    D.Fill(btnSelected);
+  END
+END Button;
+
+PROCEDURE DrawButtons;
+BEGIN
+  Button("Истинно", 30, 120, 105, 50, state1, 1, TRUE);
+  Button("Ложно", 250, 120, 90, 50, state1, 2, TRUE);
+  Button("Неизвестно", 445, 120, 135, 50, state1, 3, TRUE);
+  Button("Истинно", 30, 320, 105, 50, state2, 1, FALSE);
+  Button("Ложно", 250, 320, 90, 50, state2, 2, FALSE);
+  Button("Неизвестно", 445, 320, 135, 50, state2, 3, FALSE);
+END DrawButtons;
+ 
+PROCEDURE ChangeState;
+BEGIN
+  state1 := lastb;
+  IF lastb = 1 THEN
+   	state2 := 2
+  ELSIF lastb = 2 THEN
+    state2 := 1
+  ELSIF lastb = 3 THEN
+   	state2 := 3
+  ELSE
+   	state2 := 0
+  END;
+END ChangeState;
+
+PROCEDURE Draw;
+BEGIN
+  D.SetBackground(bgColor);
+  lastb := 0;
+  D.SetFont("Times New Roman");
+  D.Fill(statementColor);
+  D.String("'Это высказывание ложно'", 50, 90, 40);
+  D.String("'Это высказывание ложно'", 50, 290, 40);
+  DrawButtons;
+  IF pressed THEN
+    pressed := FALSE;
+    ChangeState;
+    DrawButtons
+  END;
+  IF state1 = 1 THEN
+    D.Fill(badColor);
+    D.String("Выходит, что высказывание ложно", 120, 230, 25)
+  ELSIF state1 = 2 THEN
+    D.Fill(badColor);
+    D.String("То, что в нем говорится, истина", 125, 230, 25)
+  ELSIF state1 = 3 THEN
+    D.Fill(goodColor);
+    D.String("Нет противоречий", 190, 230, 25)
+  END
+END Draw;
+
+PROCEDURE Pressed;
+BEGIN
+  pressed := TRUE
+END Pressed;
+ 
+PROCEDURE Do*;
+BEGIN
+  D.CreateCanvas("log");
+  D.SetSetupProc(Setup);
+  D.SetDrawProc(Draw);
+  D.SetPressedProc(Pressed);
+  D.Start
+END Do;
+
+BEGIN
+Do
+END Init.

@@ -1,0 +1,33 @@
+MODULE Init;
+
+IMPORT Log, Io := InOut;
+
+VAR
+ intValue : INTEGER;
+ realValue : REAL;
+ stringValue : ARRAY 1000 OF CHAR;
+ charValue : CHAR;
+ boolValue : BOOLEAN;
+PROCEDURE Do*;
+BEGIN
+  Io.Message("Начнем использовать модуль ввода данных?");
+  Log.String("Процесс пошел!"); Log.Ln;
+  Io.Int(intValue);
+  Log.String("Введено целочисленное значение = "); Log.Int(intValue); Log.Ln;
+  Io.Real(realValue);
+  Log.String("Введено действительное значение = "); Log.Real(realValue); Log.Ln;
+  Io.String(stringValue);
+  Log.String("Введена строка = "); Log.String(stringValue); Log.Ln;
+  Io.Char(charValue);
+  Log.String("Введен символ = "); Log.Char(charValue); Log.Ln;
+  Io.Boolean(boolValue);
+  IF boolValue THEN
+	Log.String("Выбрано TRUE");Log.Ln;
+  ELSE
+	Log.String("Выбрано FALSE");Log.Ln;
+  END;
+END Do;
+
+BEGIN
+	Do
+END Init.

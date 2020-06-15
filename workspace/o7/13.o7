@@ -1,0 +1,100 @@
+MODULE Init;
+
+IMPORT Log, Strings, Math;
+
+CONST s = 10; (* размер матрицы *)
+
+TYPE
+ Matrix = ARRAY s OF ARRAY s OF REAL;
+ Vector = ARRAY s OF REAL;
+
+PROCEDURE LogMatrix (m: Matrix; precision: INTEGER);
+  VAR i, j: INTEGER; a: ARRAY 64 OF CHAR;
+BEGIN
+ FOR i := 0 TO LEN(m)-1 DO
+  FOR j := 0 TO LEN(m[0])-1 DO
+   Strings.RealToString(m[i, j], a, precision);
+   Log.String(a); Log.String(" ");
+  END;
+  Log.Ln
+ END;
+ Log.Ln
+END LogMatrix;
+
+PROCEDURE LogVector (v: Vector; precision: INTEGER);
+  VAR i: INTEGER; a: ARRAY 64 OF CHAR;
+BEGIN
+ FOR i := 0 TO LEN(v)-1 DO
+   Strings.RealToString(v[i], a, precision);
+   Log.String(a); Log.String(" ");
+ END
+END LogVector;
+
+PROCEDURE GaussSolve (m: Matrix; v: Vector; VAR r: Vector);
+VAR i, j, k: INTEGER; c: REAL; a: Matrix; b: Vector;
+BEGIN
+ a := m; b := v; (* скопируем данные *)
+ (* приводим матрицу к треугольному виду *)
+ FOR k := 0 TO LEN(a)-2 DO
+  FOR i := k + 1 TO LEN(a)-1 DO
+   c :=  a[i, k] / a[k, k];
+   FOR j := k TO LEN(a[0])-1 DO
+    a[i, j] := a[i, j] - a[k, j] * c
+   END;
+   b[i] := b[i] - b[k] * c
+  END;
+ END; (* наблюдение: некоторые элементы не занулились полностью *)
+ 
+ (* найдем решение по диагональной матрице *)
+ FOR i := s - 1 TO 0 BY -1 DO
+  c := b[i];
+  FOR j := i+1 TO s - 1 DO
+    c := c - a[i, j] * r[j]
+  END;
+  r[i] := c / a[i, i]
+ END
+END GaussSolve;
+
+PROCEDURE Do;
+  VAR i, j: INTEGER; m: Matrix; b, r: Vector;
+BEGIN
+ Log.Clear;
+ Log.String("Матрица Гильберта <b>H</b> (плохо обусловленная матрица)"); Log.Ln;
+ FOR i := 0 TO s-1 DO
+  FOR j := 0 TO s-1 DO
+   m[i, j] := 1.0 / FLT(i+j+1)
+  END
+ END;
+ LogMatrix(m, 3);
+ 
+ Log.String("Если умножить <b>H</b> на единичный вектор, то получим вектор:"); Log.Ln; Log.Ln;
+ FOR i:=0 TO s-1 DO
+   b[i] := 0.0;
+   FOR j:=0 TO s-1 DO
+   	b[i] := b[i] + m[i, j]
+   END
+ END;
+ 
+ Log.String("b = [ "); LogVector(b, 3); Log.String("]"); Log.Ln; Log.Ln;
+  
+ Log.String("Решим обратную задачу методом Гаусса. Для <b>H x = b</b> найдем <b>x</b>"); Log.Ln; Log.Ln;
+ GaussSolve(m, b, r);
+ 
+ Log.String("x = [ "); LogVector(r, 3); Log.String("]"); Log.Ln; Log.Ln;
+ 
+ Log.String("Мы получили единичный вектор, как было заложено исходно."); Log.Ln; Log.Ln;
+ Log.String("Внесем возмущения в вектор <b>b' = b ± 10<sup>–12</sup></b>, и решим <b>H x' = b'</b>."); Log.Ln; Log.Ln;
+
+ FOR i:=0 TO s-1 DO
+  b[i] := b[i] + (Math.Rnd() - 0.5) * 2.0 * 0.000000000001
+ END;
+ GaussSolve(m, b, r);
+ 
+ Log.String("x' = [ "); LogVector(r, 3); Log.String("]"); Log.Ln; Log.Ln;
+  
+ Log.String("<font color=red>Полученный вектор <b>x'</b> значительно отличается от единичного.</font>"); Log.Ln; Log.Ln;
+END Do;
+
+BEGIN
+ Do
+END Init.

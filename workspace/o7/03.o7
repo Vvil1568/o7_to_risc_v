@@ -1,0 +1,139 @@
+MODULE Init;
+ IMPORT D := Draw, Strings, Perc := Percolation, Math;
+
+ CONST
+  N = Perc.N;
+  CLOSED = Perc.CLOSED;
+  OPENED = Perc.OPENED;
+  FILLED = Perc.FILLED;
+  rows = N; cols = N; size = N; (* размеры поля *)
+  width = rows * size + 1; height = cols * size + 30 + 1; (* размеры холста *)
+  bX = 1.0; bH = 24.0; bY = FLT(height) - bH - 1.0; bW = 80.0;  (* кнопка старт *) 
+  
+ VAR
+  a : ARRAY rows, cols OF BYTE; (* поле *)
+  run: BOOLEAN; 
+  n: INTEGER;   (* доля открытых ячеек *)
+
+ PROCEDURE Setup;
+ BEGIN
+  D.SetSize(width, height);
+  D.SetFrameRate(20)
+ END Setup;
+
+ PROCEDURE IsOver(): BOOLEAN;
+ BEGIN
+  RETURN D.focus & (D.mouseX > bX) & (D.mouseX < bX + bW) & (D.mouseY > bY) & (D.mouseY < bY + bH)
+ END IsOver;
+
+ PROCEDURE Clear*;
+ VAR i, j : INTEGER;
+ BEGIN
+   n := 0;
+   Perc.Clear;
+ END Clear;
+ 
+ PROCEDURE RandomFillWhileNotPercolation;
+ VAR i, j :  INTEGER; 
+ BEGIN   
+   (* открываем клетки пока не просочится *)
+   WHILE ~Perc.Percolates() DO
+     i := 1 + FLOOR(FLT(N) * Math.Rnd());
+     j := 1 + FLOOR(FLT(N) * Math.Rnd());
+     Perc.Open(i, j);
+   END; 
+   (* Передаем данные с модели на экран.
+      Обратите внимание, что в модели первая координата - это столбец,
+      поэтому надо координаты поменять местами      
+    *)
+   FOR i := 1 TO N DO
+     FOR j := 1 TO N DO 
+       IF Perc.IsFull(i, j) THEN 
+         a[j - 1, i - 1] := FILLED;
+       ELSIF Perc.IsOpen(i, j) THEN 
+         a[j - 1, i - 1] := OPENED;
+       ELSE
+         a[j - 1, i - 1] := CLOSED;
+       END;
+     END;
+   END;   
+   (* подсчет доли открытых ячеек *)
+   FOR i := 1 TO N DO
+     FOR j := 1 TO N DO 
+       IF Perc.IsFull(i, j) OR Perc.IsOpen(i, j) THEN 
+        n := n + 1;       
+       END;
+     END;
+   END; 
+   n := (100 * n) DIV (N*N);
+ END RandomFillWhileNotPercolation;
+
+ PROCEDURE Released;
+ BEGIN
+   IF IsOver() THEN
+     Clear;
+     RandomFillWhileNotPercolation; 
+   END;
+ END Released;
+
+ PROCEDURE Plot;
+ VAR i, j: INTEGER; str: ARRAY 9 OF CHAR;
+ BEGIN
+  (* рисуем клетки *)
+  D.SetBackground(255H);
+  D.NoStroke; 
+  FOR i := 0 TO rows - 1 DO
+   	FOR j := 0 TO cols - 1 DO
+     IF a[i, j] = FILLED THEN 
+       D.Fill(0FF4444FFH);
+       D.Recti(i * size, j * size, size, size)
+     ELSIF a[i, j] = CLOSED THEN
+       D.Fill(0H); 
+       D.Recti(i * size, j * size, size, size)
+     ELSE 
+       D.Fill(255H); 
+       D.Recti(i * size, j * size, size, size)
+     END
+    END
+  END; 
+  (* рисуем решетку *) 
+  D.Stroke(0H); D.StrokeWidth(1);
+  FOR i:= 0 TO rows DO D.Linei(0, i * size, width, i * size) END;
+  FOR i:= 0 TO cols DO D.Linei(i * size, 0, i * size, cols * size) END; 
+  (* рисуем кнопку *)
+  IF IsOver() THEN D.Fill(0FFAAAAAAH) ELSE D.NoFill END;
+  D.RectRounded(bX, bY, bW, bH, 5.0);
+  D.Fill(0H);
+  D.Stringi("Старт", FLOOR(bX) + 17, FLOOR(bY + bH) - 6, 16);  
+  (* рисуем счетчик *)
+  Strings.IntToString(n, str);
+  str[2] := "%";
+  D.Stringi(str, width - 100, FLOOR(bY + bH) - 6, 16)
+ END Plot;
+
+BEGIN
+
+ (* инициализация графики *)
+ D.CreateCanvas("canvas");
+ D.SetSetupProc(Setup);
+ D.SetDrawProc(Plot);
+ D.SetReleasedProc(Released);
+ D.Start
+END Init.
+
+(*
+    Copyright (C) 2019  Dmitry Shalygin
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*)

@@ -1,0 +1,90 @@
+MODULE Init;
+
+IMPORT Log, Draw;
+
+VAR
+ img: Draw.Image; active, passive, turn: INTEGER; gameOver: BOOLEAN;
+ grid: ARRAY 2 OF SET; (* порядковые номера заполненных ячеек *)
+ lines: ARRAY 8 OF SET; (* варианты победных комбинаций *)
+
+PROCEDURE Start;
+VAR i, j: INTEGER;
+BEGIN
+ grid[0] := {}; grid[1] := {};
+ Log.Clear; Log.String("начало,"); Log.Ln;
+ Log.String("первыми ходят крестики"); Log.Ln;
+ active := 1; passive := 0; turn := 1; gameOver := FALSE
+END Start;
+
+PROCEDURE Controller;
+VAR cell, i: INTEGER; 
+BEGIN
+ IF gameOver THEN
+  Start; Draw.Redraw
+ ELSE
+  Draw.Redraw; (* определение координат мыши *)
+  cell := FLOOR(Draw.mouseY / 40.0) * 3 + FLOOR(Draw.mouseX / 40.0);
+  IF ~ (cell IN grid[passive] + grid[active]) THEN
+   grid[active] := grid[active] + {cell};
+   (* проверка, сложилась ли линия *)
+   i := 0;
+   WHILE (i < 8) & ~ gameOver DO
+    gameOver := lines[i] - grid[active] = {};
+    INC(i)
+   END;
+   (* вывод информации о ходе игры *)
+   Log.Clear; Log.String("сделан ход "); Log.Int(turn); Log.String(", "); Log.Ln;
+   IF gameOver THEN
+    IF active = 1 THEN
+     Log.String("крестики победили!")
+    ELSE
+     Log.String("нолики победили!")
+    END
+   ELSIF turn = 9 THEN
+    Log.String("ничья..."); gameOver := TRUE
+   ELSE
+    IF active = 1 THEN
+     active := 0; passive := 1; Log.String("следующий ход ноликов")
+    ELSE
+     active := 1; passive := 0; Log.String("следующий ход крестиков")
+    END
+   END;
+   Log.Ln; INC(turn); Draw.Redraw
+  END
+ END
+END Controller;
+
+PROCEDURE ViewInit;
+BEGIN Draw.SetSize(120, 120); Draw.NoLoop
+END ViewInit;
+
+PROCEDURE View;
+VAR i, j: INTEGER;
+BEGIN
+ Draw.SetBackground(0FFBBBBBBH);
+ FOR i := 0 TO 2 DO
+  Draw.Linei(i * 40, 0, i * 40, 120); Draw.Linei(0, i * 40, 120, i * 40);
+  FOR j := 0 TO 2 DO
+   IF j * 3 + i IN grid[0] THEN Draw.Stringi("⭕", i * 40 + 6, j * 40 + 31, 28) END;
+   IF j * 3 + i IN grid[1] THEN Draw.Stringi("❌", i * 40 + 6, j * 40 + 31, 28) END;
+  END
+ END;
+ Draw.Linei(119, 0, 119, 119); Draw.Linei(0, 119, 119, 119)
+END View;
+
+BEGIN
+ lines[0] := {0, 1, 2};
+ lines[1] := {3, 4, 5};
+ lines[2] := {6, 7, 8};
+ lines[3] := {0, 3, 6};
+ lines[4] := {1, 4, 7};
+ lines[5] := {2, 5, 8};
+ lines[6] := {0, 4, 8};
+ lines[7] := {2, 4, 6};
+ Start;
+ Draw.CreateCanvas("canvas");
+ Draw.SetSetupProc(ViewInit);
+ Draw.SetDrawProc(View);
+ Draw.SetPressedProc(Controller);
+ Draw.Start
+END Init.

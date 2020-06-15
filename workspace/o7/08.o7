@@ -1,0 +1,46 @@
+MODULE Init;
+
+IMPORT Draw, Log;
+
+VAR
+ img: Draw.Image;
+ model: INTEGER;
+
+PROCEDURE Controller;
+BEGIN
+ model := (model + 1) MOD 4;
+ Draw.Redraw
+END Controller;
+ 
+PROCEDURE ViewInit;
+BEGIN
+ Draw.SetSize(50, 50);
+ Draw.NoLoop;
+ Log.String("нажимайте на квадрат"); Log.Ln
+END ViewInit;
+ 
+PROCEDURE View;
+BEGIN
+ CASE model OF 0:
+  Draw.SetBackground(Draw.black);
+  Log.String("черный"); Log.Ln
+ | 1:
+  Draw.SetBackground(Draw.red);
+  Log.String("красный"); Log.Ln
+ | 2:
+  Draw.SetBackground(Draw.green);
+  Log.String("зеленый"); Log.Ln
+ | 3:
+  Draw.SetBackground(Draw.blue);
+  Log.String("голубой"); Log.Ln
+ END
+END View;
+
+BEGIN
+ model := 0;
+ Draw.CreateCanvas("canvas");
+ Draw.SetSetupProc(ViewInit);
+ Draw.SetDrawProc(View);
+ Draw.SetReleasedProc(Controller);
+ Draw.Start
+END Init.

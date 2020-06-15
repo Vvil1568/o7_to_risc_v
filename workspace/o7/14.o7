@@ -1,0 +1,28 @@
+MODULE Init;
+
+ IMPORT Log;
+
+ PROCEDURE Start;
+ VAR 
+   a0, a1, an, i: INTEGER;
+   pr: REAL;
+ 
+ BEGIN
+  a0 := 0;
+  a1 := 1;
+  i := 1;
+  WHILE i < 40 DO
+   an := a0 + a1;
+     Log.Int(i);
+     Log.String(" * ");
+     Log.Real(FLT(an) / FLT(a1));
+     Log.Ln;
+   a0 := a1;
+   a1 := an;
+   INC(i)
+  END
+ END Start;
+
+BEGIN
+ Start
+END Init.

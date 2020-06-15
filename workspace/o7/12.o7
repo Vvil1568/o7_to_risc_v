@@ -1,0 +1,104 @@
+MODULE Init;
+
+ IMPORT D := Draw, M := Math, S := Strings;
+
+ CONST
+  width = 400; height = 400; (* размер холста *)
+  n = 300; nodes = 16; r = 70.0; speed = 0.1; (* параметры модели *)
+ 
+ TYPE
+  Vector = RECORD x, y: REAL END;
+
+ VAR
+  step: INTEGER;
+  p: ARRAY n OF Vector; (* аппроксимируемые данные *)
+  m: ARRAY nodes OF Vector; (* узлы (нейроны) карты Кохонена *)
+
+ PROCEDURE Setup;
+ BEGIN D.SetSize(width, height); D.SetFrameRate(10);
+ END Setup;
+
+ PROCEDURE Dist (VAR e1, e2: Vector): REAL;
+ BEGIN
+  RETURN M.Sqrt(M.IntPower(e1.x - e2.x, 2) + M.IntPower(e1.y - e2.y, 2))
+ END Dist;
+
+ PROCEDURE Learn;
+ VAR i, j, win: INTEGER; min, d: REAL;
+ BEGIN
+  FOR i := 0 TO n - 1 DO
+   (* определяем нейрон-победитель *)
+   min := FLT(width + height);
+   win := -1;
+   FOR j := 0 TO nodes - 1 DO
+    d := Dist(p[i], m[j]);
+    IF d < min THEN
+     min := d; win := j
+    END
+   END;
+   (* корректируем веса (положение) нейрона в карте Кохонена *)
+   m[win].x := m[win].x + (p[i].x - m[win].x) * speed;
+   m[win].y := m[win].y + (p[i].y - m[win].y) * speed;
+   FOR j := 0 TO nodes - 1 DO
+    IF j # win THEN
+     d := Dist(m[win], m[j]);
+     IF d < r THEN
+      m[j].x := m[j].x + (m[win].x - m[j].x) / d * speed;
+      m[j].y := m[j].y + (m[win].y - m[j].y) / d * speed;
+     END
+    END
+   END
+  END
+ END Learn;
+
+ PROCEDURE Plot;
+ VAR x0, y0, x1, y1, x: REAL; i: INTEGER; str: ARRAY 16 OF CHAR;
+ BEGIN
+  D.SetBackground(255H);
+  D.NoStroke();
+  D.Fill(D.red);
+  (* входные данные *)
+  FOR i := 0 TO n - 1 DO
+   D.Ellipse(p[i].x, p[i].y, 6.0, 6.0)
+  END;
+  (* нейроны карты Кохонена *)
+  D.Fill(D.blue);
+  FOR i := 0 TO nodes - 1 DO
+   D.Ellipse(m[i].x, m[i].y, 20.0, 20.0)
+  END;
+  (* число шагов *)
+  D.Fill(D.black);
+  S.IntToString(step, str);
+  D.Stringi(str, 20, height - 20, 20);
+  (* обучение карты *)
+  IF step = 50 THEN
+   D.NoLoop
+  ELSE
+   Learn; INC(step)
+  END  
+ END Plot;
+
+ PROCEDURE InitModel;
+ VAR i, j: INTEGER;
+ BEGIN
+  (* задаем данные *)
+  FOR i := 0 TO n - 1 DO
+   p[i].x := FLT(width DIV 2) + (M.Rnd() * 2.0 - 1.0) * 180.0;
+   p[i].y := FLT(height DIV 2) + (M.Rnd() * 2.0 - 1.0) * 180.0 * M.Sin(p[i].x / 60.0);
+  END;
+  (* располагаем нейроны карты *)
+  FOR i := 0 TO 3 DO
+   FOR j := 0 TO 3 DO
+    m[i * 4 + j].x := 40.0 + FLT(i * 100);
+    m[i * 4 + j].y := 40.0 + FLT(j * 100);
+   END
+  END
+ END InitModel;
+
+BEGIN
+ InitModel;
+ D.CreateCanvas("canvas");
+ D.SetSetupProc(Setup);
+ D.SetDrawProc(Plot);
+ D.Start
+END Init.

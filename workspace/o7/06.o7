@@ -1,0 +1,23 @@
+MODULE Init;
+
+IMPORT Log, Draw;
+
+PROCEDURE Do*;
+VAR i, v: INTEGER;
+BEGIN
+ FOR i:=1 TO 9 DO
+  FOR v:=1 TO 9 DO
+   IF i * v < 10 THEN
+    Log.String("  ")
+   ELSIF i * v >= 10 THEN
+    Log.String(" ")
+   END;
+   Log.Int(i*v)
+  END;
+  Log.Ln
+ END
+END Do;
+
+BEGIN
+ Do
+END Init.

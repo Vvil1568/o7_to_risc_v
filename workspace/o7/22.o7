@@ -1,0 +1,158 @@
+(* Карточка Журдена *)
+MODULE Init;
+IMPORT Log, D := Draw2;
+ 
+CONST
+  bgColor = 102; bgBackColor = 72; btnSelected = 255; btnUnselected = 150;
+  statementColor = 255; goodColor = 0FF00CC00H; badColor = 0FFFF0000H;
+ 
+VAR
+  state1, state2, lastb: INTEGER;
+  pressed, backside: BOOLEAN;
+ 
+PROCEDURE Setup;
+BEGIN
+  D.SetSize(600, 500);
+  state1 := 0; state2 := 0;
+  backside := FALSE;
+END Setup;
+
+PROCEDURE Button(caption: ARRAY OF CHAR; x, y, w, h, state, nstate: INTEGER; pressable: BOOLEAN);
+  VAR rx, ry, rw, rh: REAL;
+BEGIN
+  rx := FLT(x); ry := FLT(y); rw := FLT(w); rh := FLT(h);
+  D.NoFill();
+  IF pressable THEN
+    D.Stroke(0)
+  ELSE
+    D.Stroke(btnUnselected)
+  END;
+  D.Rect(rx, ry, rw, rh);
+  IF pressable THEN
+  	IF (D.MouseX >= rx) & (D.MouseX <= rx+rw) & (D.MouseY >= ry) & (D.MouseY <= ry+rh) THEN
+  	  D.Rect(rx+5.0, ry+5.0, rw-10.0, rh-10.0);
+      lastb := nstate
+    END
+  END;
+  IF state = nstate THEN 
+  	D.String(caption, x+10, y+30, 20)
+  ELSE
+    D.Fill(btnUnselected);
+  	D.String(caption, x+10, y+30, 20);
+    D.Fill(btnSelected);
+  END
+END Button;
+
+PROCEDURE DrawButtons;
+BEGIN
+  Button("Истина", 30, 155, 95, 50, state1, 1, TRUE);
+  Button("Ложь", 250, 155, 80, 50, state1, 2, TRUE);
+  Button("Перевернуть", 445, 155, 140, 50, state1, 3, TRUE);
+  Button("Истина", 30, 405, 95, 50, state2, 1, FALSE);
+  Button("Ложь", 250, 405, 80, 50, state2, 2, FALSE);
+END DrawButtons;
+
+PROCEDURE DrawTexts;
+BEGIN
+  D.SetFont("Times New Roman");
+  D.Fill(statementColor);
+  IF backside THEN
+    D.SetBackground(bgBackColor);
+    D.String("'Утверждение на обратной", 50, 50, 40);
+    D.String("стороне этой карточки", 50, 90, 40);
+    D.String("- ИСТИННО '", 200, 130, 40);
+    D.String("'Утверждение на обратной", 50, 300, 40);
+    D.String("стороне этой карточки", 50, 340, 40);
+    D.String("- ЛОЖНО '", 200, 380, 40);
+  ELSE
+    D.SetBackground(bgColor);
+    D.String("'Утверждение на обратной", 50, 50, 40);
+    D.String("стороне этой карточки", 50, 90, 40);
+    D.String("- ЛОЖНО '", 200, 130, 40);
+    D.String("'Утверждение на обратной", 50, 300, 40);
+    D.String("стороне этой карточки", 50, 340, 40);
+    D.String("- ИСТИННО '", 200, 380, 40);
+  END;
+END DrawTexts;
+ 
+PROCEDURE ChangeState;
+  VAR st: INTEGER;
+BEGIN
+  IF lastb = 3 THEN
+   	backside := ~backside;
+    st := state1;
+    state1 := state2;
+    state2 := st;
+    lastb := state1;
+  END;
+  IF lastb = 1 THEN
+    state1 := 1;
+    IF backside THEN
+      state2 := 1
+    ELSE
+   	  state2 := 2
+    END
+  ELSIF lastb = 2 THEN
+    state1 := 2;
+    IF backside THEN
+      state2 := 2
+    ELSE
+      state2 := 1
+    END
+  ELSE
+    state1 := 0;
+   	state2 := 0
+  END;
+END ChangeState;
+
+PROCEDURE Draw;
+BEGIN
+  lastb := 0;
+  DrawTexts;
+  D.Line(0.0, 250.0, 600.0, 250.0);
+  DrawButtons;
+  IF pressed THEN
+    pressed := FALSE;
+    ChangeState;
+    DrawTexts;
+  D.Line(0.0, 250.0, 600.0, 250.0);
+    DrawButtons;
+  END;
+  IF state1 = 1 THEN
+    D.Fill(badColor);
+    IF backside THEN
+      D.String("Утверждение ниже - истинно", 130, 240, 25);
+      D.String("Утверждение выше - ложно", 140, 490, 25)
+    ELSE
+      D.String("Утверждение ниже - ложно", 140, 240, 25);
+      D.String("Утверждение выше - ложно", 140, 490, 25)
+    END
+  ELSIF state1 = 2 THEN
+    D.Fill(badColor);
+    IF backside THEN
+      D.String("Утверждение ниже - ложно", 140, 240, 25);
+      D.String("Утверждение выше - истинно", 130, 490, 25)
+    ELSE
+      D.String("Утверждение ниже - истинно", 130, 240, 25);
+      D.String("Утверждение выше - истинно", 130, 490, 25)
+    END
+  END
+END Draw;
+
+PROCEDURE Pressed;
+BEGIN
+  pressed := TRUE
+END Pressed;
+ 
+PROCEDURE Do*;
+BEGIN
+  D.CreateCanvas("log");
+  D.SetSetupProc(Setup);
+  D.SetDrawProc(Draw);
+  D.SetPressedProc(Pressed);
+  D.Start
+END Do;
+
+BEGIN
+Do
+END Init.

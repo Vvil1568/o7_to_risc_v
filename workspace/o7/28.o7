@@ -1,0 +1,15 @@
+(* Привет мир *)
+MODULE Init;
+
+ IMPORT Log;
+
+ PROCEDURE Do;
+ VAR a : CHAR;
+ BEGIN
+  Log.String("Привет Мир!"); Log.Ln
+ END Do;
+
+BEGIN
+ Do
+
+END Init.

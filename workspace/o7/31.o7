@@ -1,0 +1,37 @@
+MODULE Pressure;
+
+  IMPORT SYSTEM, LPC, ADC, Main, Out, Timer;
+ 
+  PROCEDURE Init;
+  VAR s: SET;
+  BEGIN
+    (* Configure pins connected to potentiometer as ADC inputs *)
+    SYSTEM.GET(LPC.PINSEL0, s);
+    s := s + {21,20}; (* P0.10, AD0.3, PINSEL0 21:20 = 11 *)
+    s := s + {23,22}; (* P0.11, AD0.4, PINSEL0 23:22 = 11 *)
+    s := s + {25,24}; (* P0.12, AD0.5, PINSEL0 25:24 = 11 *)
+    SYSTEM.PUT(LPC.PINSEL0, s);
+    SYSTEM.GET(LPC.PINSEL1, s);
+    s := s + {13,12}; (* P0.22, AD0.0, PINSEL1 13:12 = 11 *)
+    s := s + {15,14}; (* P0.23, AD0.1, PINSEL1 15:14 = 11 *)
+    s := s + {17,16}; (* P0.24, AD0.2, PINSEL1 17:16 = 11 *)
+    s := s + {19,18}; (* P0.25, AD0.6, PINSEL1 19:18 = 11 *)
+    s := s + {21,20}; (* P0.26, AD0.7, PINSEL1 21:20 = 11 *)
+    SYSTEM.PUT(LPC.PINSEL1, s);
+    ADC.PowerUp
+  END Init;
+ 
+  PROCEDURE Run;
+  VAR data: ARRAY 8 OF INTEGER; i: INTEGER;
+  BEGIN
+    WHILE TRUE DO
+      FOR i := 0 TO 7 DO ADC.Read(i, data[i]) END;
+      FOR i := 0 TO 7 DO Out.Int(data[i], 5) END;
+      Out.Ln;
+      Timer.MSecDelay(1000)
+    END
+  END Run;
+
+BEGIN
+  Init; Run
+END Pressure.

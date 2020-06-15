@@ -1,0 +1,23 @@
+MODULE Init;
+
+IMPORT SYSTEM, MCU, Robot, Time;
+
+VAR s: INTEGER;
+
+PROCEDURE Repeat;
+BEGIN
+ IF s = 0 THEN
+  SYSTEM.PUT(MCU.GPIOABSRR, {0, 15+16});
+  INC(s);
+ ELSIF s > 0 THEN
+  SYSTEM.PUT(MCU.GPIOABSRR, {s, (s-1)+16});
+  IF s = 15 THEN s := 0 ELSE INC(s) END
+ END;
+ Time.DoLater(Repeat, 500)
+END Repeat;
+
+BEGIN
+ s := 0;
+ Robot.Start;
+ Repeat
+END Init.

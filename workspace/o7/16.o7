@@ -1,0 +1,143 @@
+MODULE Init;
+ IMPORT D := Draw, Strings;
+
+ CONST
+  rows = 20; cols = 20; size = 20; (* размеры поля *)
+  width = rows * size + 1; height = cols * size + 30 + 1; (* размеры холста *)
+  bX = 1.0; bH = 24.0; bY = FLT(height) - bH - 1.0; bW = 80.0;  (* кнопка старт *)
+  rX = 90.0; rH = 24.0; rY = FLT(height) - rH - 1.0; rW = 80.0;  (* кнопка очистить *)
+
+ VAR
+  a, aNew: ARRAY rows, cols OF BOOLEAN; (* поле *)
+  run: BOOLEAN; n, t: INTEGER;
+
+ PROCEDURE Setup;
+ BEGIN
+  D.SetSize(width, height);
+  D.SetFrameRate(20)
+ END Setup;
+
+ PROCEDURE IsOver(): BOOLEAN;
+ BEGIN
+  RETURN D.focus & (D.mouseX > bX) & (D.mouseX < bX + bW) & (D.mouseY > bY) & (D.mouseY < bY + bH)
+ END IsOver;
+
+ PROCEDURE IsOver2(): BOOLEAN;
+ BEGIN
+  RETURN D.focus & (D.mouseX > rX) & (D.mouseX < rX + rW) & (D.mouseY > rY) & (D.mouseY < rY + rH)
+ END IsOver2;
+ 
+ PROCEDURE Released;
+ VAR x, y, i, j: INTEGER;
+ BEGIN
+  IF IsOver() THEN
+   run := ~ run;
+   IF run THEN n := 0 END
+  END;
+  IF IsOver2() THEN
+   FOR i := 0 TO rows - 1 DO
+   	FOR j := 0 TO cols - 1 DO
+     a[i, j] := FALSE
+    END
+   END;
+   run := FALSE
+  END;
+  IF ~ run THEN
+   x := FLOOR(D.mouseX - 3.0) DIV size;
+   y := FLOOR(D.mouseY - 3.0) DIV size;
+   IF (x >= 0) & (x < cols) & (y >= 0) & (y < rows) THEN
+   	a[x, y] := ~ a[x, y]
+   END
+  END
+ END Released;
+ 
+ PROCEDURE Step;
+ VAR ne, i, j, ip, jp, im, jm: INTEGER;
+ BEGIN
+  aNew := a;
+  FOR i := 0 TO rows - 1 DO
+   FOR j := 0 TO cols - 1 DO
+    (* подсчет соседей, замкнутые граничные условия *)
+    IF i = 0 THEN im := rows-1 ELSE im := i-1 END;
+    IF j = 0 THEN jm := cols-1 ELSE jm := j-1 END;
+    IF i = rows-1 THEN ip := 0 ELSE ip := i+1 END;
+    IF j = cols-1 THEN jp := 0 ELSE jp := j+1 END;
+    ne := 0;
+    IF a[im, jm] THEN INC(ne) END;
+    IF a[im,  j] THEN INC(ne) END;
+    IF a[im, jp] THEN INC(ne) END;
+    IF a[ i, jm] THEN INC(ne) END;
+    IF a[ i, jp] THEN INC(ne) END;
+    IF a[ip, jm] THEN INC(ne) END;
+    IF a[ip,  j] THEN INC(ne) END;
+    IF a[ip, jp] THEN INC(ne) END;
+    (* вносим изменения с учетом числа соседей *)
+    IF ne = 3 THEN
+     aNew[i, j] := TRUE
+    ELSIF (ne < 2) OR (ne > 3) THEN
+     aNew[i, j] := FALSE
+    END
+   END
+  END;
+  a := aNew
+ END Step;
+
+ PROCEDURE Plot;
+ VAR i, j: INTEGER; str: ARRAY 8 OF CHAR;
+ BEGIN
+  (* вычисления *)
+  IF run THEN
+   INC(t);
+   IF t MOD 5 = 0 THEN (* дважды в секунду *)
+    Step;
+    INC(n)
+   END
+  END;
+  (* рисуем клетки *)
+  D.SetBackground(255H);
+  D.NoStroke; D.Fill(0FF4444FFH);
+  FOR i := 0 TO rows - 1 DO
+   	FOR j := 0 TO cols - 1 DO
+     IF a[i, j] THEN D.Recti(i * size, j * size, size, size) END
+    END
+  END;
+  (* рисуем решетку *)
+  D.Stroke(0H); D.StrokeWidth(1);
+  FOR i:= 0 TO rows DO D.Linei(0, i * size, width, i * size) END;
+  FOR i:= 0 TO cols DO D.Linei(i * size, 0, i * size, cols * size) END;
+  (* рисуем кнопку *)
+  IF IsOver() THEN D.Fill(0FFAAAAAAH) ELSE D.NoFill END;
+  D.RectRounded(bX, bY, bW, bH, 5.0);
+  D.Fill(0H);
+  IF run THEN 
+   D.Stringi("Стоп",  FLOOR(bX) + 20, FLOOR(bY + bH) - 6, 16)
+  ELSE
+   D.Stringi("Старт", FLOOR(bX) + 17, FLOOR(bY + bH) - 6, 16)
+  END;
+  (* рисуем кнопку *)
+  IF IsOver2() THEN D.Fill(0FFAAAAAAH) ELSE D.NoFill END;
+  D.RectRounded(rX, rY, rW, rH, 5.0);
+  D.Fill(0H);
+  D.Stringi("Очистить",  FLOOR(rX) + 6, FLOOR(rY + rH) - 6, 16);
+  (* рисуем счетчик *)
+  Strings.IntToString(n, str);
+  D.Stringi(str, width - 100, FLOOR(bY + bH) - 6, 16)
+ END Plot;
+
+BEGIN
+ run := FALSE;
+ n := 0;
+ t := 0;
+ (* фигура планер *)
+ a[1, 2] := TRUE;
+ a[2, 3] := TRUE;
+ a[3, 3] := TRUE;
+ a[3, 1] := TRUE;
+ a[3, 2] := TRUE;
+ (* инициализация графики *)
+ D.CreateCanvas("canvas");
+ D.SetSetupProc(Setup);
+ D.SetDrawProc(Plot);
+ D.SetReleasedProc(Released);
+ D.Start
+END Init.

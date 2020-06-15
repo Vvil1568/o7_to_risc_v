@@ -1,0 +1,43 @@
+MODULE Buttontest;
+  (*
+    Ivan Denisov, d.ivan.krsk@gmail.com, 2 September 2012
+    Button Press for Embedded Artists LPC2103 Education Board.
+  *)
+
+  IMPORT SYSTEM, LPC, Timer, Led7, Main;
+
+  PROCEDURE Run;
+    VAR counter: INTEGER; selection: SET; pushed: BOOLEAN;
+  BEGIN
+    (* Making sure that P0.14 is configured as GPIO *)
+    SYSTEM.GET(LPC.PINSEL0, selection);
+    SYSTEM.PUT(LPC.PINSEL0, (selection - {28, 29}));
+    (* Preconditions *)
+    counter := 0;
+    Led7.Display(0);
+    pushed := FALSE;
+    (* Main loop *)
+    WHILE TRUE DO
+      (* Get state of all pins *)
+      SYSTEM.GET(LPC.IOPIN0, selection);
+      (* If P0.14 button has been pushed *)
+      IF ~ (14 IN selection) THEN
+        IF ~ pushed THEN
+          IF counter = 9 THEN
+            counter := 0
+          ELSE
+            INC(counter)
+          END;
+          Led7.Display(counter)
+        END;
+        pushed := TRUE
+      ELSE
+        pushed := FALSE
+      END
+    END
+  END Run;
+
+BEGIN
+  Led7.Init;
+  Run
+END Buttontest.

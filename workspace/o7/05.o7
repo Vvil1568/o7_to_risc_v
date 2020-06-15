@@ -1,0 +1,27 @@
+MODULE Init;
+
+IMPORT JS, Log;
+
+PROCEDURE Ask (VAR arg: ARRAY OF CHAR);
+VAR value: ARRAY 256 OF CHAR; i : INTEGER;
+BEGIN
+ JS.do("result = prompt('Как вас зовут:', ''); value = result;"); 
+ i := 0;
+ WHILE (i < LEN(value)) & (value[i] # 0X) DO
+  arg[i] := value[i];
+  INC(i)
+ END
+END Ask;
+
+PROCEDURE Do;
+VAR name: ARRAY 256 OF CHAR;
+BEGIN
+ Ask(name);
+ IF name[0] # 0X THEN
+  Log.String("Здравствуйте, "); Log.String(name); Log.String("!"); Log.Ln;
+ END
+END Do;
+
+BEGIN
+ Do
+END Init.

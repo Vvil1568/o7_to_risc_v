@@ -1,0 +1,51 @@
+MODULE Init;
+    (* Модуль, обеспечивающий рисование сетки заданного размера,
+     * не превышающего допустимый максимальный размер,
+     * на некотром графическом экране, размер которого также не должен
+     * превышать заданное число пикселей
+     *)
+    IMPORT D := Draw, Strings, Log, 
+ 		Queen8first,
+ 		G := ColoredGrid;
+
+    VAR
+        err : INTEGER;
+ 		i, j : INTEGER;
+ 
+ 		rows, cols : INTEGER;
+ 		yMax, xMax : INTEGER;
+ 		img: D.Image;
+
+BEGIN
+	rows := 8;
+	cols := 8;
+	yMax := 512;
+	xMax := 512;
+ 	err := G.InitGrid(rows, cols, yMax, xMax);
+
+    IF err = 0 THEN
+	  	(* Шахматная доска *)
+  		i := 0;
+  		WHILE i < rows DO
+   			j := 0;
+   			WHILE j < cols DO
+    			IF ODD(i+j) THEN
+    				G.Set(i, j, 0FF22CCCCH);
+     			ELSE
+    				G.Set(i, j, 0FFFFFF99H);
+     			END;
+    			j := j + 1;
+    		END;
+   			i := i + 1;
+   		END;
+    
+        (* инициализация графики *)
+        D.CreateCanvas("log");
+        D.SetSetupProc(G.Setup);
+        D.SetDrawProc(G.DrawGrid);
+        D.SetReleasedProc(G.Released);
+        D.Start;
+    ELSE
+        Log.String("Incorrect Inicialization")
+    END
+END Init.

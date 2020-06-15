@@ -1,0 +1,247 @@
+(* Заряженные частицы в кольце *)
+MODULE Init;
+
+ IMPORT Log, D := Draw, M := Math, S := Strings;
+
+ CONST
+  width = 480; height = 520; (* размеры холста *)
+  s1Pos = 420.0; (* положение 1-го слайдера *)
+  s2Pos = 470.0; (* положение 2-го слайдера *)
+  r1 = 190.0; (* внешний радиус кольца *)
+  r2 = 170.0; (* внутренний радиус кольца *)
+  er = 5.0; (* радиус частицы *)
+  em = 1.0; (* масса *)
+  eq = 10000.0;  (* безразмерный заряд *)
+  dt = 0.005; (* шаг по времени в методе Эйлера *)
+  cx = 200.0;
+  cy = 200.0;
+  ne = 60; (* число частиц *)
+  compCycles = 10; (* кол-во вычислений в одном кадре *)
+ 
+ TYPE
+  Particle = RECORD
+ 	x, y, vx, vy: REAL
+  END;
+ 
+ VAR
+  label1, label2: ARRAY 16 OF CHAR;
+  labelColor: INTEGER;
+  pressed1, pressed2: BOOLEAN;
+  time, posForce, force, posDis, dis: REAL;
+ 
+  e: ARRAY ne OF Particle;
+ 
+ PROCEDURE Setup;
+ BEGIN
+  D.SetSize(width, height);
+  D.SetFrameRate(20);
+ END Setup;
+
+ PROCEDURE Pressed;
+ BEGIN
+  pressed1 := (D.mouseY > s1Pos - 6.0) & (D.mouseY < s1Pos + 6.0);
+  pressed2 := (D.mouseY > s2Pos - 6.0) & (D.mouseY < s2Pos + 6.0);
+ END Pressed;
+
+ PROCEDURE Released;
+ BEGIN
+  pressed1 := FALSE;
+  pressed2 := FALSE
+ END Released;
+
+ PROCEDURE R (e: Particle): REAL;
+ BEGIN
+  RETURN M.Sqrt(M.IntPower(e.x, 2) + M.IntPower(e.y, 2))
+ END R;
+
+ PROCEDURE Dist2 (e1, e2: Particle): REAL;
+ BEGIN
+  RETURN M.IntPower(e1.x - e2.x, 2) + M.IntPower(e1.y - e2.y, 2)
+ END Dist2;
+
+ PROCEDURE Move;
+ VAR i, j: INTEGER; fx, fy, dr, r, d: REAL;
+ BEGIN
+  FOR i := 0 TO ne-1 DO
+   e[i].x := e[i].x + e[i].vx * dt;
+   e[i].y := e[i].y + e[i].vy * dt;
+  
+   fx := 0.0;
+   fy := 0.0;
+  
+   (* электростатическое отталкивание частиц *)
+   FOR j := 0 TO ne-1 DO
+   	IF i # j THEN
+     d := Dist2(e[i], e[j]);
+     IF d < er * er * 100.0 THEN
+   	  fx := fx + eq / d * M.Sign(e[i].x - e[j].x);
+      fy := fy + eq / d * M.Sign(e[i].y - e[j].y);
+     END
+    END
+   END;
+  
+   (* электростатическое притяжение к кольцу *)
+   r := R(e[i]);
+   dr := (r1 + r2)/2.0 - r;
+   fx := fx + e[i].x * dr;
+   fy := fy + e[i].y * dr;
+
+   (* разгон частиц в блоке разгона *)
+   IF (e[i].x > 0.0) & (e[i].y > - 20.0) & (e[i].y < 20.0) THEN
+    fy := fy + force;
+   END;
+  
+   (* диссипация пропорциональная скорости *)
+   fx := fx - e[i].vx * dis;
+   fy := fy - e[i].vy * dis;
+
+   e[i].vx := e[i].vx + fx / em * dt;
+   e[i].vy := e[i].vy + fy / em * dt;
+  END
+ END Move;
+
+ PROCEDURE Plot;
+ VAR x0, y0, x1, y1, x, d: REAL; i: INTEGER;
+ BEGIN
+  D.SetBackground(255H);
+
+  (* блок разгона частиц *)
+  D.Stroke(0H);
+  D.StrokeWidth(1);
+  D.Fill(0FF4444FFH);
+  D.RectRounded(350.0, 180.0, 60.0, 40.0, 4.0);
+ 
+  (* проводник *)
+  D.Stroke(70H);
+  D.NoFill();
+  D.StrokeWidth(1);
+  D.Ellipse(cx, cy, r1 * 2.0, r1 * 2.0);
+  D.Ellipse(cx, cy, r2 * 2.0, r2 * 2.0);
+ 
+  (* расчет положения частиц *)
+  time := time + dt * FLT(compCycles);
+  FOR i := 0 TO compCycles - 1 DO
+   Move
+  END;
+ 
+  D.NoStroke();
+  D.Fill(0FFFF4444H);
+  (* частицы *)
+  d := er * 2.0;
+  FOR i := 0 TO ne-1 DO
+   D.Ellipse(cx + e[i].x, cy + e[i].y, d, d)
+  END;
+ 
+  (* подписи *)
+  D.Fill(0H);
+  S.RealToString(time, label2, 1);
+  S.Join(label2, "c");
+  D.String(label2, 420.0, 40.0, 16);
+  
+  (* слайдер силы *)
+  IF pressed1 THEN
+   labelColor := 0FFFF77FFH; (* ARGB формат *)
+   posForce := D.mouseX;
+   IF posForce < 40.0 THEN posForce := 40.0 END;
+   IF posForce > 340.0 THEN posForce := 340.0 END
+  ELSE
+   labelColor := 0H
+  END;
+  D.Stroke(70H);
+  D.StrokeWidth(2);
+  D.Line(40.0, s1Pos, 340.0, s1Pos);
+  D.Stroke(0H);
+  D.Fill(labelColor);
+  D.RectRounded(posForce - 6.0, s1Pos - 6.0, 12.0, 12.0, 4.0);
+  D.Fill(0H);
+  D.String("0", 15.0, s1Pos - 5.0, 16);
+  D.String("300", 345.0, s1Pos - 5.0, 16);
+  force := (posForce - 40.0);
+  label1 := "F = ";
+  S.RealToString(force, label2, 1);
+  S.Join(label1, label2);
+  D.String(label1, posForce - 20.0, s1Pos + 30.0, 16);
+ 
+  (* слайдер диссипации *)
+  IF pressed2 THEN
+   labelColor := 0FFFF77FFH; (* ARGB формат *)
+   posDis := D.mouseX;
+   IF posDis < 40.0 THEN posDis := 40.0 END;
+   IF posDis > 340.0 THEN posDis := 340.0 END
+  ELSE
+   labelColor := 0H
+  END;
+  D.Stroke(70H);
+  D.StrokeWidth(2);
+  D.Line(40.0, s2Pos, 340.0, s2Pos);
+  D.Stroke(0H);
+  D.Fill(labelColor);
+  D.RectRounded(posDis - 6.0, s2Pos - 6.0, 12.0, 12.0, 4.0);
+  D.Fill(0H);
+  D.String("0", 15.0, s2Pos - 5.0, 16);
+  D.String("1", 345.0, s2Pos - 5.0, 16);
+  dis := (posDis - 40.0) / 300.0;
+  label1 := "dis = ";
+  S.RealToString(dis, label2, 2);
+  S.Join(label1, label2);
+  D.String(label1, posDis - 20.0, s2Pos + 30.0, 16);
+ END Plot;
+
+ PROCEDURE InitModel;
+ VAR i, j: INTEGER; x, y, dx, dy, dr, r: REAL; cross: BOOLEAN;
+ BEGIN
+  time := 0.0;
+  force := 0.0;
+  posForce := 40.0;
+ 
+  dis := 0.3;  (* коэф. диссипации *)
+  posDis := 40.0 + dis * 300.0;
+ 
+  (* располагаем частицы в кольце случайным образом без перекрытия 
+  i := 0;
+  WHILE i < ne DO
+   x := (M.Rnd() * 2.0 - 1.0) * r1;
+   y := (M.Rnd() * 2.0 - 1.0) * r1;
+   r := M.Sqrt(x * x + y * y);
+   IF (r > r2) & (r < r1) THEN
+   	cross := FALSE;
+    j := 0;
+   	WHILE (j < i) & ~ cross DO
+     dx := e[j].x - x;
+     dy := e[j].y - y;
+     cross := M.Sqrt(dx * dx + dy * dy) < er * 2.0;
+     INC(j)
+    END;
+   	IF ~ cross THEN
+   	 e[i].x := x;
+     e[i].y := y;
+     e[i].vx := 0.0;
+     e[i].vy := 0.0;
+     INC(i)
+    END
+   END
+  END;
+ *)
+  
+  (* располагаем частицы упорядоченно *)
+  i := 0;
+  WHILE i < ne DO
+   e[i].x := M.Sin(FLT(i) * 6.0 / 180.0 * M.Pi()) * 180.0;
+   e[i].y := M.Cos(FLT(i) * 6.0 / 180.0 * M.Pi()) * 180.0;
+   INC(i)
+  END;
+ 
+ END InitModel;
+
+BEGIN
+ 
+ InitModel;
+ 
+ D.CreateCanvas("log");
+ D.SetSetupProc(Setup);
+ D.SetDrawProc(Plot);
+ D.SetPressedProc(Pressed);
+ D.SetReleasedProc(Released);
+ D.Start
+ 
+END Init.

@@ -1,0 +1,100 @@
+(* Вариант Альберта Саксонского *)
+MODULE Init;
+IMPORT Log, D := Draw2;
+ 
+CONST
+  bgColor = 102; btnSelected = 255; btnUnselected = 150;
+  statementColor = 255; goodColor = 0FF00CC00H; badColor = 0FFFF0000H;
+ 
+VAR
+  state1, lastb: INTEGER;
+  pressed: BOOLEAN;
+ 
+PROCEDURE Setup;
+BEGIN
+  D.SetSize(600, 400);
+  state1 := 0;
+END Setup;
+
+PROCEDURE Button(caption: ARRAY OF CHAR; x, y, w, h, state, nstate: INTEGER; pressable: BOOLEAN);
+  VAR rx, ry, rw, rh: REAL;
+BEGIN
+  rx := FLT(x); ry := FLT(y); rw := FLT(w); rh := FLT(h);
+  D.NoFill();
+  IF pressable THEN
+    D.Stroke(0)
+  ELSE
+    D.Stroke(btnUnselected)
+  END;
+  D.Rect(rx, ry, rw, rh);
+  IF pressable THEN
+  	IF (D.MouseX >= rx) & (D.MouseX <= rx+rw) & (D.MouseY >= ry) & (D.MouseY <= ry+rh) THEN
+  	  D.Rect(rx+5.0, ry+5.0, rw-10.0, rh-10.0);
+      lastb := nstate
+    END
+  END;
+  IF state = nstate THEN 
+  	D.String(caption, x+10, y+30, 20)
+  ELSE
+    D.Fill(btnUnselected);
+  	D.String(caption, x+10, y+30, 20);
+    D.Fill(btnSelected);
+  END
+END Button;
+
+PROCEDURE DrawButtons;
+BEGIN
+  Button("Истинно", 30, 235, 105, 50, state1, 1, TRUE);
+  Button("Ложно", 250, 235, 90, 50, state1, 2, TRUE);
+END DrawButtons;
+
+PROCEDURE ChangeState;
+  VAR st: INTEGER;
+BEGIN
+  state1 := lastb
+END ChangeState;
+
+PROCEDURE Draw;
+BEGIN
+  lastb := 0;
+  D.SetBackground(bgColor);
+  D.Fill(255);
+  D.String("Сократ: ", 50, 50, 40);
+  D.String("'Дважды два - четыре.'", 50, 90, 40);
+  D.String("Платон: ", 50, 130, 40);
+  D.String("'Из нас двоих только ", 50, 170, 40);
+  D.String(" Сократ говорит правду.'", 50, 210, 40);
+  DrawButtons;
+  IF pressed THEN
+    pressed := FALSE;
+    ChangeState;
+    DrawButtons;
+  END;
+  IF state1 = 1 THEN
+    D.Fill(badColor);
+    D.String("Тогда Платон говорит неправду", 100, 320, 25);
+  ELSIF state1 = 2 THEN
+    D.Fill(goodColor);
+    D.String("Если Платон говорит неправду,", 100, 320, 25);
+    D.String("То и Сократ говорит неправду,", 100, 350, 25);
+    D.String("2*2 = 11 в троичной системе счисления", 50, 380, 25);
+  END
+END Draw;
+
+PROCEDURE Pressed;
+BEGIN
+  pressed := TRUE
+END Pressed;
+ 
+PROCEDURE Do*;
+BEGIN
+  D.CreateCanvas("log");
+  D.SetSetupProc(Setup);
+  D.SetDrawProc(Draw);
+  D.SetPressedProc(Pressed);
+  D.Start
+END Do;
+
+BEGIN
+Do
+END Init.
