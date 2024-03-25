@@ -1,0 +1,106 @@
+//-----------------------------------------------------------------------------
+// ConstExpression = SimpleConstExpression [relation SimpleConstExpression].
+std::pair<bool, ConstContext*> ModuleCompiler::isConstExpression() {
+//_0:
+    std::string operName;
+    std::pair<bool, ConstContext*> checkRes1 = isSimpleConstExpression();
+    ConstContext* firstOperand;
+    if (checkRes1.first) {
+        firstOperand = checkRes1.second;
+        goto _1;
+    }
+    return { false, nullptr };
+_1:
+    if(isRelation()) {
+        operName = lexValue;
+        goto _2;
+    }
+    goto _end;
+_2:
+    std::pair<bool, ConstContext*> checkRes2 = isSimpleConstExpression();
+    if(checkRes2.first) {
+        firstOperand = creator.CreateConstExpr(firstOperand, checkRes2.second, operName);
+        goto _end;
+    }
+    return { erMessage("Simple Constant Expression expected"), nullptr };
+_end:
+    return { true, firstOperand };
+}
+
+//-----------------------------------------------------------------------------
+// SimpleConstExpression = ["+" | "-"] ConstTerm {AddOperator ConstTerm}.
+std::pair<bool, ConstContext*> ModuleCompiler::isSimpleConstExpression() {
+//_0:
+    std::string unarOpName = "";
+    std::string operName;
+    ConstContext* firstOperand = nullptr;
+    if(isSymbol(moduleStr[pos], '+')) {
+        ++pos;
+        ++column;
+        ignore();
+        unarOpName = "+";
+        goto _1;
+    }
+    if(isSymbol(moduleStr[pos], '-')) {
+        ++pos;
+        ++column;
+        ignore();
+        unarOpName = "-";
+        goto _1;
+    }
+    std::pair<bool, ConstContext*> checkRes1 = isConstTerm();
+    if(checkRes1.first) {
+        firstOperand = checkRes1.second;
+        goto _2;
+    }
+    return { false, nullptr };
+_1:
+    std::pair<bool, ConstContext*> checkRes2 = isConstTerm();
+    if (checkRes2.first) {
+        if (firstOperand != nullptr) {
+            firstOperand = creator.CreateConstExpr(firstOperand, checkRes2.second, operName);
+        }
+        else {
+            firstOperand = creator.CreateConstUnarExpr(checkRes2.second, unarOpName);
+        }
+        goto _2;
+    }
+    return { erMessage("Constant Term expected"), nullptr };
+_2:
+    if(isAddOperator()) {
+        operName = lexValue;
+        goto _1;
+    }
+    goto _end;
+_end:
+    return { true, firstOperand };
+}
+
+//-----------------------------------------------------------------------------
+// ConstTerm = ConstFactor {MulOperator ConstFactor}.
+std::pair<bool, ConstContext*> ModuleCompiler::isConstTerm() {
+//_0:
+    std::pair<bool, ConstContext*> checkRes1 = isConstFactor();
+    std::string operName;
+    ConstContext* firstOperand;
+    if (checkRes1.first) {
+        firstOperand = checkRes1.second;
+        goto _1;
+    }
+    return { false, nullptr };
+_1: 
+    if(isMulOperator()) {
+        operName = lexValue;
+        goto _2;
+    }
+    goto _end;
+_2:
+    std::pair<bool, ConstContext*> checkRes2 = isConstTerm();
+    if (checkRes2.first) {
+        firstOperand = creator.CreateConstExpr(firstOperand, checkRes2.second, operName);
+        goto _1;
+    }
+    return { erMessage("Constant Factor expected"), nullptr };
+_end:
+    return { true, firstOperand };
+}

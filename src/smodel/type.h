@@ -14,6 +14,9 @@ public:
 
     // Вывод отладочной информации о базовом типе
     virtual void debugOut();
+
+    // Вывод названия типа
+    virtual std::string getTypeName();
 protected:
     // Размер типа
     int typeSize;
@@ -29,6 +32,8 @@ public:
 
     // Вывод отладочной информации о типе
     virtual void debugOut();
+    // Вывод названия типа
+    virtual std::string getTypeName();
 };
 
 // Класс, определяющий целочисленный тип
@@ -41,6 +46,8 @@ public:
 
     // Вывод отладочной информации о типе
     virtual void debugOut();
+    // Вывод названия типа
+    virtual std::string getTypeName();
 };
 
 // Класс, определяющий действительный тип
@@ -53,6 +60,8 @@ public:
 
     // Вывод отладочной информации о типе
     virtual void debugOut();
+    // Вывод названия типа
+    virtual std::string getTypeName();
 };
 
 // Класс, определяющий символьный тип
@@ -65,6 +74,8 @@ public:
 
     // Вывод отладочной информации о типе
     virtual void debugOut();
+    // Вывод названия типа
+    virtual std::string getTypeName();
 };
 
 // Класс, определяющий множественный тип
@@ -77,6 +88,8 @@ public:
 
     // Вывод отладочной информации о типе
     virtual void debugOut();
+    // Вывод названия типа
+    virtual std::string getTypeName();
 };
 
 // Класс, определяющий тип "запись"
@@ -92,6 +105,8 @@ public:
 
     // Вывод отладочной информации о записи
     virtual void debugOut();
+    // Вывод названия типа
+    virtual std::string getTypeName();
 private:
     // Родительский контекст (если присутствует, иначе nullptr)
     TypeRecordContext* parentContext;
@@ -109,8 +124,24 @@ public:
 
     // Вывод отладочной информации о типе
     virtual void debugOut();
+    // Вывод названия типа
+    virtual std::string getTypeName();
 private:
     TypeRecordContext* recordType;    // указатель ссылается только на запись
+};
+
+// Класс, определяющий тип "массив"
+class TypeArrayContext : public TypeContext {
+public:
+    // Создание оболочки типа и задание его контекста
+    TypeArrayContext(TypeContext* p, int size) {
+        typeSize = p->getTypeSize()*size;
+    }
+
+    // Вывод отладочной информации о массиве
+    virtual void debugOut();
+    // Вывод названия типа
+    virtual std::string getTypeName();
 };
 
 #endif // TYPE_H

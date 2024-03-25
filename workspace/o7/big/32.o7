@@ -1,0 +1,7 @@
+MODULE TestExpr;
+
+VAR
+  intVal : INTEGER;
+BEGIN
+  intVal := 1 + 2 + 3 + 4;
+END TestExpr.

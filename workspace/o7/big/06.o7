@@ -1,7 +1,9 @@
 MODULE Init;
 
 IMPORT Log, Draw;
-
+CONST 
+  x = -2 + (3 *4);
+  y = x + (3 *4);
 PROCEDURE Do*;
 VAR i, v: INTEGER;
 BEGIN

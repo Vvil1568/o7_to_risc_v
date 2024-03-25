@@ -14,6 +14,8 @@ set(SOURCE_LIB
     procedure.h
     type.h
     variable.h
+    expr.h
+    statement.h
     
     #sources
     const.cpp
@@ -26,6 +28,8 @@ set(SOURCE_LIB
     procedure.cpp
     type.cpp
     variable.cpp
+    expr.cpp
+    statement.cpp
 )
 
-add_library(smodel STATIC ${SOURCE_LIB})   # Создание статической библиотеки
+add_library(smodel STATIC ${SOURCE_LIB} )   # Создание статической библиотеки

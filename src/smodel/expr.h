@@ -1,0 +1,260 @@
+#ifndef EXPR_H
+#define EXPR_H
+
+#include "context.h"
+#include "variable.h"
+#include "const.h"
+
+// Класс, определяющий контекст выражения.
+// Предполагается, что в языке существуют литералы основных типов
+class ExprContext : public Context {
+public:
+    // Вывод отладочной информации о контексте импорта
+    virtual void debugOut() {
+
+    }
+
+    virtual std::string getResType() {
+        return getType();
+    }
+    // Информации о типе контекста
+    virtual std::string getType() {
+        return "UNDEFINED";
+    }
+};
+
+// Класс, определяющий контекст целочисленного литерала.
+class ExprIntContext : public ExprContext {
+public:
+    // Создание целочисленного литерала
+    ExprIntContext(int v) : value(v) { }
+
+    // Вывод отладочной информации о целочисленном литерале
+    virtual void debugOut() {
+        std::cout << value;
+    }
+    // Информации о типе контекста
+    virtual std::string getType() {
+        return "INT";
+    }
+    int getIntValue() {
+        return value;
+    }
+private:
+    // Значение литерала
+    int value;
+};
+
+// Класс, определяющий контекст вещественного литерала.
+class ExprRealContext : public ExprContext {
+public:
+    // Создание вещественного литерала
+    ExprRealContext(double v) : value(v) { }
+
+    // Вывод отладочной информации о вещественном литерале
+    virtual void debugOut() {
+        std::cout << value;
+    }
+    // Информации о типе контекста
+    virtual std::string getType() {
+        return "REAL";
+    }
+    double getRealValue() {
+        return value;
+    }
+private:
+    // Значение литерала
+    double value;
+};
+
+// Класс, определяющий контекст булевого литерала.
+class ExprBooleanContext : public ExprContext {
+public:
+    // Создание булевого литерала
+    ExprBooleanContext(bool v) : value(v) { }
+
+    // Вывод отладочной информации о булевом литерале
+    virtual void debugOut() {
+        std::cout << value;
+    }
+    // Информации о типе контекста
+    virtual std::string getType() {
+        return "BOOL";
+    }
+    bool getBoolValue() {
+        return value;
+    }
+private:
+    // Значение константы
+    bool value;
+};
+
+// Класс, определяющий контекст строкового литерала.
+class ExprStringContext : public ExprContext {
+public:
+    // Создание строкового литерала
+    ExprStringContext(std::string v) : value(v) { }
+
+    // Вывод отладочной информации о строковом литерале
+    virtual void debugOut() {
+        std::cout << value;
+    }
+    // Информации о типе контекста
+    virtual std::string getType() {
+        return "STRING";
+    }
+    std::string getStrValue() {
+        return value;
+    }
+private:
+    // Значение константы
+    std::string value;
+};
+
+// Класс, определяющий контекст значения константы.
+class ExprConstContext : public ExprContext {
+public:
+    // Создание строкового литерала
+    ExprConstContext(ConstContext* constant) {
+        this->constant = constant;
+    }
+
+    // Вывод отладочной информации о строковом литерале
+    virtual void debugOut() {
+        std::cout << "CONST";
+    }
+    // Информации о типе контекста
+    virtual std::string getType() {
+        return "CONST";
+    }
+    virtual std::string getResType() {
+        return constant->getValue()->getType();
+    }
+private:
+    // Значение константы
+    ConstContext* constant;
+};
+
+// Класс, определяющий контекст значения переменной.
+class ExprVarContext : public ExprContext {
+public:
+    // Создание строкового литерала
+    ExprVarContext(VarContext* variable) {
+        this->variable = variable;
+    }
+
+    // Вывод отладочной информации о строковом литерале
+    virtual void debugOut() {
+        std::cout << "VAR";
+    }
+    // Информации о типе контекста
+    virtual std::string getType() {
+        return "VAR";
+    }
+    virtual std::string getResType() {
+        return variable->getType()->getTypeName();
+    }
+private:
+    // Переменная
+    VarContext* variable;
+};
+
+// Класс, определяющий контекст NIL литерала.
+class ExprNilContext : public ExprContext {
+public:
+    // Создание NIL литерала
+    ExprNilContext() { }
+
+    // Вывод отладочной информации о NIL литерале
+    virtual void debugOut() {
+        std::cout << "NIL";
+    }
+    // Информации о типе контекста
+    virtual std::string getType() {
+        return "NIL";
+    }
+};
+
+// Класс, определяющий контекст ошибки.
+class ExprErrContext : public ExprContext {
+public:
+    // Создание ошибки
+    ExprErrContext(std::string errMsg) : errMsg(errMsg) { }
+
+    // Вывод отладочной информации о константе ошибки
+    virtual void debugOut() {
+        std::cout << "ERROR: "<<errMsg;
+    }
+    // Информации о типе контекста
+    virtual std::string getType() {
+        return "ERR";
+    }
+    virtual std::string getResType() {
+        return "ERR: "+errMsg;
+    }
+    std::string getErrMsg() {
+        return errMsg;
+    }
+private:
+    // Сообщение об ошибке
+    std::string errMsg;
+};
+
+// Класс, определяющий контекст выражения.
+class ExprExprContext : public ExprContext {
+public:
+    // Создание выражения
+    ExprExprContext(ExprContext* leftOp, ExprContext* rightOp, std::string operName) {
+        left = leftOp;
+        right = rightOp;
+        this->operName = operName;
+    }
+    // Вывод отладочной информации о выражении
+    virtual void debugOut() {
+        std::cout << "( ";
+        left->debugOut();
+        std::cout << " " << operName << " ";
+        right->debugOut();
+        std::cout << " )";
+    }
+    virtual std::string getResType();
+    // Информации о типе контекста
+    virtual std::string getType() {
+        return "EXPR";
+    }
+private:
+    // Левый операнд
+    ExprContext* left;
+    // Правый операнд
+    ExprContext* right;
+    // Название оператора
+    std::string operName;
+};
+
+// Класс, определяющий контекст унарного константного выражения.
+class ExprUnarExprContext : public ExprContext {
+public:
+    // Создание константного выражения
+    ExprUnarExprContext(ExprContext* operand, std::string operName) {
+        this->operand = operand;
+        this->operName = operName;
+    }
+    // Вывод отладочной информации о константном выражении
+    virtual void debugOut() {
+        std::cout << "( " << operName << " ";
+        operand->debugOut();
+        std::cout <<  " )";
+    }
+    virtual std::string getResType();
+    // Информации о типе контекста
+    virtual std::string getType() {
+        return "EXPR";
+    }
+private:
+    // Операнд
+    ExprContext* operand;
+    // Название оператора
+    std::string operName;
+};
+
+#endif // EXPR_H

@@ -36,6 +36,12 @@ void TypeSetContext::debugOut() {
     std::cout << "SET, size = " << typeSize; // << std::endl;
 }
 
+// Вывод отладочной информации о массиве
+void TypeArrayContext::debugOut() {
+    TypeContext::debugOut();
+    std::cout << "ARRAY, size = " << typeSize; // << std::endl;
+}
+
 // Добавление к записи, объявленной в модуле именованного поля
 void TypeRecordContext::AddNamedModuleField(std::string name, TypeContext* typeContext, bool access) {
     NamedArtefact tmpNamed{name, typeContext, access};
@@ -67,3 +73,49 @@ void TypePointerContext::debugOut() {
     std::cout << "}"; // << std::endl;
 }
 
+
+
+// Вывод названия типа
+std::string TypeContext::getTypeName() {
+    return "UNKNOWN";
+}
+
+// Вывод названия типа
+std::string TypeBoolContext::getTypeName() {
+    return "BOOL";
+}
+
+// Вывод названия типа
+std::string TypeIntegerContext::getTypeName() {
+    return "INT";
+}
+
+// Вывод названия типа
+std::string TypeRealContext::getTypeName() {
+    return "REAL";
+}
+
+// Вывод названия типа
+std::string TypeCharContext::getTypeName() {
+    return "CHAR";
+}
+
+// Вывод названия типа
+std::string TypeSetContext::getTypeName() {
+    return "SET";
+}
+
+// Вывод названия типа
+std::string TypeArrayContext::getTypeName() {
+    return "ARRAY";
+}
+
+// Вывод названия типа
+std::string TypeRecordContext::getTypeName() {
+    return "RECORD";
+}
+
+// Вывод названия типа
+std::string TypePointerContext::getTypeName() {
+    return "POINTER";
+}

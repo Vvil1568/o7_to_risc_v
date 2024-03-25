@@ -47,8 +47,8 @@ CONST
 TYPE 
   AnyRec = RECORD END;
   Node = POINTER TO RECORD 
-    rec    : POINTER TO AnyRec; 
-    next   : Node
+    rec    : POINTER TO AnyRec; (*тип Node был заменен во избежание рекурсии*)
+    next   : AnyRec 
   END;
    
   Product = POINTER TO RECORD (AnyRec)     
@@ -71,8 +71,8 @@ TYPE
     txtColor         : INTEGER;
     overBgColor      : INTEGER;   (* цвет когда под указателем мыши *)
     ClickProc        : PROCEDURE;
-    UpdateProc       : PROCEDURE (view : View); (* процедура апдейта вьюхи *)
-    ViewProc         : PROCEDURE (view : View); (* процедура альтернативной отрисовки *)
+    UpdateProc       : PROCEDURE (view : AnyRec); (* процедура апдейта вьюхи, тип View был заменен во избежание рекурсии *)
+    ViewProc         : PROCEDURE (view : AnyRec); (* процедура альтернативной отрисовки, тип View был заменен во избежание рекурсии *)
     model            : Product
    
   END;

@@ -6,15 +6,22 @@
 #include <vector>
 
 #include "context.h"
+#include "const.h"
+#include "type.h"
+#include "statement.h"
 
 // Класс определяющий данные, непосредственно доступные для модуля и процедур
 class CommonData {
+public:
+    void SetStatementSequence(std::vector<StatementContext*> statements);
 protected:
     static std::string moduleName;  // имя модуля
     // Список артефактов с зарезервированными именами
     static std::vector<NamedArtefact*> reservedNamedArtefacts;
     // Список именованных артефактов, порождаемых в модуле
     static std::vector<NamedArtefact*> namedArtefacts;
+private:
+    std::vector<StatementContext*> statements;
 };
 
 // Класс, определяющий модуль семантической модели.
@@ -32,7 +39,9 @@ public:
     // Добавление именованного артефакта
     void AddNamedArtefact(std::string name, Context* context, bool access = false);
 
-///private:
+    TypeContext* GetTypeFromName(std::string name);
+    ConstContext* GetConstFromName(std::string name);
+    VarContext* GetVarFromName(std::string name);
 };
 
 #endif // MODULE_H

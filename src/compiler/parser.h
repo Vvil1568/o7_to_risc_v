@@ -4,8 +4,9 @@
 #include <iostream>
 #include <string>
 #include <vector>
-
+#include <utility>
 #include <cctype>
+#include "creator.h"
 
 // Структура для временного хранения позиций во время разбора
 struct Location {
@@ -35,6 +36,11 @@ class ModuleCompiler {
     int oldPos;        // Позиция в тексте
     int oldLine;       // Номер строки
     int oldColumn;     // Номер столбца
+    // Создатель элементов семантической модели
+    Creator creator;
+    Module curModule;
+    //Get the qualident type
+    TypeContext* getTypeFromQualident(std::string qualident);
 public:
     // Конструктор, формирующий начальные установки параметров компилятора
     ModuleCompiler(const char* str);
@@ -50,13 +56,13 @@ public:
     // ConstDeclaration
     bool isConstDeclaration();
     // ConstExpression
-    bool isConstExpression();
+    std::pair<bool, ConstContext*> isConstExpression();
     // SimpleConstExpression
-    bool isSimpleConstExpression();
+    std::pair<bool, ConstContext*> isSimpleConstExpression();
     // ConstTerm
-    bool isConstTerm();
+    std::pair<bool, ConstContext*> isConstTerm();
     // ConstFactor
-    bool isConstFactor();
+    std::pair<bool, ConstContext*> isConstFactor();
     // ConstSet
     bool isConstSet();
     // ConstElement
@@ -64,35 +70,35 @@ public:
     // TypeDeclaration
     bool isTypeDeclaration();
     // type
-    bool isType();
+    std::pair<bool, TypeContext*> isType();
     // ArrayType
-    bool isArrayType();
+    std::pair<bool, TypeContext*> isArrayType();
     // RecordType
-    bool isRecordType();
+    std::pair<bool, TypeContext*> isRecordType();
     // FieldList
-    bool isFieldList();
+    bool isFieldList(TypeRecordContext* record);
     // PointerType
-    bool isPointerType();
+    std::pair<bool, TypeContext*> isPointerType();
     // ProcedureType
-    bool isProcedureType();
+    std::pair<bool, ProcContext*> isProcedureType();
     // FormalParameters
-    bool isFormalParameters();
+    bool isFormalParameters(ProcContext*);
     // FPSection
-    bool isFPSection();
+    bool isFPSection(ProcContext* proc);
     // VariableDeclaration
     bool isVariableDeclaration();
     // ProcedureDeclaration
     bool isProcedureDeclaration();
     // ProcedureHeading
-    bool isProcedureHeading();
+    std::pair<bool, ProcContext*> isProcedureHeading();
     // ProcedureBody
     bool isProcedureBody();
     // StatementSequence
-    bool isStatementSequence();
+    std::pair<bool, std::vector<StatementContext*>> isStatementSequence();
     // statement
-    bool isStatement();
+    std::pair<bool, StatementContext*> isStatement();
     // assignment = designator ":=" expression.
-    bool isAssignment();
+    std::pair<bool, StatementContext*> isAssignment();
     // ProcedureCall = designator [ActualParameters].
     bool isProcedureCall();
     // IfStatement
@@ -106,13 +112,13 @@ public:
     // ForStatement
     bool isForStatement();
     // expression
-    bool isExpression();
+    std::pair<bool, ExprContext*> isExpression();
     // SimpleExpression
-    bool isSimpleExpression();
+    std::pair<bool, ExprContext*> isSimpleExpression();
     // term
-    bool isTerm();
+    std::pair<bool, ExprContext*> isTerm();
     // factor
-    bool isFactor();
+    std::pair<bool, ExprContext*> isFactor();
     // designator
     bool isDesignator();
     // set

@@ -19,6 +19,43 @@ void Module::AddNamedArtefact(std::string name, Context* context, bool access) {
     context->setNamedArtefact(tmpNamed);
 }
 
+TypeContext* Module::GetTypeFromName(std::string name)
+{
+    for (NamedArtefact* artefact : namedArtefacts) {
+        if (artefact->getName() != name) continue;
+        if (TypeContext* type = dynamic_cast<TypeContext*>(artefact->getContext())) {
+            return type;
+        }
+    }
+    return nullptr;
+}
+
+ConstContext* Module::GetConstFromName(std::string name)
+{
+    for (NamedArtefact* artefact : namedArtefacts) {
+        if (artefact->getName() != name) continue;
+        if (ConstContext* type = dynamic_cast<ConstContext*>(artefact->getContext())) {
+            return type;
+        }
+    }
+    return nullptr;
+}
+
+VarContext* Module::GetVarFromName(std::string name)
+{
+    for (NamedArtefact* artefact : namedArtefacts) {
+        if (artefact->getName() != name) continue;
+        if (VarContext* type = dynamic_cast<VarContext*>(artefact->getContext())) {
+            return type;
+        }
+    }
+    return nullptr;
+}
+
+void CommonData::SetStatementSequence(std::vector<StatementContext*> statements) {
+    this->statements = statements;
+}
+
 // Вывод отладочной информации о модуле
 void Module::debugOut() {
     std::cout << "Module " << CommonData::moduleName << std::endl;

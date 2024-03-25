@@ -66,6 +66,7 @@ ModuleCompiler::ModuleCompiler(const char* str): moduleStr{str},
 //          [BEGIN StatementSequence] END ident "." .
 bool ModuleCompiler::isModule() {
 //_0:
+    std::pair<bool, std::vector<StatementContext*>> stSeqCheckRes;
     ignore();
     if(isKeyWord("MODULE")) {
         ignore();
@@ -74,6 +75,7 @@ bool ModuleCompiler::isModule() {
     return erMessage("The Module must start using key word MODULE");
 _1:
     if(isIdent()) {
+        curModule.setModuleName(lexValue);
         goto _2;
     }
     return erMessage("It's not the name of Module");
@@ -119,7 +121,9 @@ _5:
     }
     return erMessage("BEGIN or END expected");
 _6:
-    if(isStatementSequence()) {
+    stSeqCheckRes = isStatementSequence();
+    if (stSeqCheckRes.first) {
+        curModule.SetStatementSequence(stSeqCheckRes.second);
         goto _7;
     }
     if(isKeyWord("END")) {
@@ -159,18 +163,24 @@ _end:
 // ImportList = IMPORT import {"," import} ";".
 // import = ident [":=" ident].
 bool ModuleCompiler::isImportList() {
+    std::string name;
+    std::string alias;
 //_0:
     if(isKeyWord("IMPORT")) {
         goto _1;
     }
     return false;
 _1:
+    name = "";
+    alias = "";
     if(isIdent()) {
+        alias = lexValue;
         goto _2;
     }
     return erMessage("It's not the imported name or alias");
 _2:
     if(isSymbol(moduleStr[pos], ',')) {
+        curModule.AddNamedArtefact(alias, creator.CreateImportContext(alias, alias));
         ++pos;
         ++column;
         ignore();
@@ -188,11 +198,13 @@ _2:
     return erMessage("It's not comma or  semicolon the imported name or alias or asignment");
 _3:
     if(isIdent()) {
+        name = lexValue;
         goto _4;
     }
     return erMessage("It's not the imported name");
 _4:
     if(isSymbol(moduleStr[pos], ',')) {
+        curModule.AddNamedArtefact(alias, creator.CreateImportContext(name, alias));
         ++pos;
         ++column;
         ignore();
@@ -324,7 +336,14 @@ _end:
 // ConstExpression = expression.
 bool ModuleCompiler::isConstDeclaration() {
 //_0:
+    std::string name = "";
+    bool access = false;
     if(isIdentdef()) {
+        name = lexValue;
+        if (name.back() == '*') {
+            name = name.substr(0, name.length() - 1);
+            access = true;
+        }
         goto _1;
     }
     return false;
@@ -337,7 +356,13 @@ _1:
     }
     return erMessage("Symbol '=' expected");
 _2:
-    if(isConstExpression()) {
+    std::pair<bool, ConstContext*> checkRes1 = isConstExpression();
+    if(checkRes1.first) {
+        ConstContext* result = checkRes1.second->getValue();
+        if (result->getType() == "ERR") {
+            return erMessage("Error while constant evaluation: "+dynamic_cast<ConstErrContext*>(result)->getErrMsg());
+        }
+        curModule.AddNamedArtefact(name, result, access);
         goto _end;
     }
     return erMessage("Constant Expression expected");
@@ -347,100 +372,148 @@ _end:
 
 //-----------------------------------------------------------------------------
 // ConstExpression = SimpleConstExpression [relation SimpleConstExpression].
-bool ModuleCompiler::isConstExpression() {
+std::pair<bool, ConstContext*> ModuleCompiler::isConstExpression() {
 //_0:
-    if(isSimpleConstExpression()) {
+    std::string operName;
+    std::pair<bool, ConstContext*> checkRes1 = isSimpleConstExpression();
+    ConstContext* firstOperand;
+    if (checkRes1.first) {
+        firstOperand = checkRes1.second;
         goto _1;
     }
-    return false;
+    return { false, nullptr };
 _1:
     if(isRelation()) {
+        operName = lexValue;
         goto _2;
     }
     goto _end;
 _2:
-    if(isSimpleConstExpression()) {
+    std::pair<bool, ConstContext*> checkRes2 = isSimpleConstExpression();
+    if(checkRes2.first) {
+        firstOperand = creator.CreateConstExpr(firstOperand, checkRes2.second, operName);
         goto _end;
     }
-    return erMessage("Simple Constant Expression expected");
+    return { erMessage("Simple Constant Expression expected"), nullptr };
 _end:
-    return true;
+    return { true, firstOperand };
 }
 
 //-----------------------------------------------------------------------------
 // SimpleConstExpression = ["+" | "-"] ConstTerm {AddOperator ConstTerm}.
-bool ModuleCompiler::isSimpleConstExpression() {
+std::pair<bool, ConstContext*> ModuleCompiler::isSimpleConstExpression() {
 //_0:
+    std::string unarOpName = "";
+    std::string operName;
+    ConstContext* firstOperand = nullptr;
     if(isSymbol(moduleStr[pos], '+')) {
         ++pos;
         ++column;
         ignore();
+        unarOpName = "+";
         goto _1;
     }
     if(isSymbol(moduleStr[pos], '-')) {
         ++pos;
         ++column;
         ignore();
+        unarOpName = "-";
         goto _1;
     }
-    if(isConstTerm()) {
+    std::pair<bool, ConstContext*> checkRes1 = isConstTerm();
+    if(checkRes1.first) {
+        firstOperand = checkRes1.second;
         goto _2;
     }
-    return false;
+    return { false, nullptr };
 _1:
-    if(isConstTerm()) {
+    std::pair<bool, ConstContext*> checkRes2 = isConstTerm();
+    if (checkRes2.first) {
+        if (firstOperand != nullptr) {
+            firstOperand = creator.CreateConstExpr(firstOperand, checkRes2.second, operName);
+        }
+        else {
+            firstOperand = creator.CreateConstUnarExpr(checkRes2.second, unarOpName);
+        }
         goto _2;
     }
-    return erMessage("Constant Term expected");
+    return { erMessage("Constant Term expected"), nullptr };
 _2:
     if(isAddOperator()) {
+        operName = lexValue;
         goto _1;
     }
     goto _end;
 _end:
-    return true;
+    return { true, firstOperand };
 }
 
 //-----------------------------------------------------------------------------
 // ConstTerm = ConstFactor {MulOperator ConstFactor}.
-bool ModuleCompiler::isConstTerm() {
+std::pair<bool, ConstContext*> ModuleCompiler::isConstTerm() {
 //_0:
-    if(isConstFactor()) {
+    std::pair<bool, ConstContext*> checkRes1 = isConstFactor();
+    std::string operName;
+    ConstContext* firstOperand;
+    if (checkRes1.first) {
+        firstOperand = checkRes1.second;
         goto _1;
     }
-    return false;
-_1:
+    return { false, nullptr };
+_1: 
     if(isMulOperator()) {
+        operName = lexValue;
         goto _2;
     }
     goto _end;
 _2:
-    if(isConstFactor()) {
+    std::pair<bool, ConstContext*> checkRes2 = isConstFactor();
+    if (checkRes2.first) {
+        firstOperand = creator.CreateConstExpr(firstOperand, checkRes2.second, operName);
         goto _1;
     }
-    return erMessage("Constant Factor expected");
+    return { erMessage("Constant Factor expected"), nullptr };
 _end:
-    return true;
+    return { true, firstOperand };
 }
 
 //-----------------------------------------------------------------------------
 // ConstFactor = number | string | NIL | TRUE | FALSE |
 //             ConstSet | designator [ActualParameters] | "(" ConstExpression ")" | "~" ConstFactor.
-bool ModuleCompiler::isConstFactor() {
+// number = integer | real
+std::pair<bool, ConstContext*> ModuleCompiler::isConstFactor() {
 //_0:
+    ConstContext* factor;
     if(isKeyWord("NIL")) {
+        factor = creator.CreateConstNil();
         goto _end;
     }
     if(isKeyWord("TRUE")) {
+        factor = creator.CreateConstBool(true);
         goto _end;
     }
     if(isKeyWord("FALSE")) {
+        factor = creator.CreateConstBool(false);
         goto _end;
     }
     if(isString()) {
+        factor = creator.CreateConstString(lexValue);
         goto _end;
     }
-    if(isNumber()) {
+    if (isReal()) {
+        float floatLexValue = std::stof(lexValue.c_str(), 0);
+        factor = creator.CreateConstReal(floatLexValue);
+        goto _end;
+    }
+    if(isInteger()) {
+        int intLexValue;
+        if (lexValue.back() == 'H') {
+            intLexValue = std::stoll(lexValue.substr(0, lexValue.length() - 1).c_str(), 0, 16);
+        }
+        else {
+            intLexValue = std::atoi(lexValue.c_str());
+        }
+        factor = creator.CreateConstInt(intLexValue);
         goto _end;
     }
     if(isConstSet()) {
@@ -459,14 +532,17 @@ bool ModuleCompiler::isConstFactor() {
         goto _3;
     }
     if(isDesignator()) {
+        factor = curModule.GetConstFromName(lexValue);
         goto _4;
     }
-    return false;
+    return { false, nullptr };
 _1:
-    if(isConstExpression()) {
+    std::pair<bool, ConstContext*> checkRes1 = isConstExpression();
+    if(checkRes1.first) {
+        factor = checkRes1.second;
         goto _2;
     }
-    return erMessage("Constant Expression expected");
+    return { erMessage("Constant Expression expected"), nullptr };
 _2:
     if(isSymbol(moduleStr[pos], ')')) {
         ++pos;
@@ -474,19 +550,21 @@ _2:
         ignore();
         goto _end;
     }
-    return erMessage("Right bracket expected");
+    return { erMessage("Right bracket expected"), nullptr };
 _3:
-    if(isConstFactor()) {
+    std::pair<bool, ConstContext*> checkRes2 = isConstFactor();
+    if(checkRes2.first) {
+        factor = creator.CreateConstUnarExpr(checkRes2.second, "~");
         goto _end;
     }
-    return erMessage("Constant Factor expected");
+    return { erMessage("Constant Factor expected"), nullptr };
 _4:
     if(isActualParameters()) {
         goto _end;
     }
     goto _end;
 _end:
-    return true;
+    return { true, factor };
 }
 
 //-----------------------------------------------------------------------------
@@ -538,7 +616,8 @@ _end:
 // ConstElement = ConstExpression [".." ConstExpression].
 bool ModuleCompiler::isConstElement() {
 //_0:
-    if(isConstExpression()) {
+    std::pair<bool, ConstContext*> checkRes1 = isConstExpression();
+    if(checkRes1.first) {
         goto _1;
     }
     return false;
@@ -552,7 +631,8 @@ _1:
     }
     goto _end;
 _2:
-    if(isConstExpression()) {
+    std::pair<bool, ConstContext*> checkRes2 = isConstExpression();
+    if(checkRes2.first) {
         goto _1;
     }
     return erMessage("Constant Expression expected");
@@ -564,7 +644,14 @@ _end:
 // TypeDeclaration = identdef "=" type.
 bool ModuleCompiler::isTypeDeclaration() {
 //_0:
+    std::string name;
+    bool access = false;
     if(isIdentdef()) {
+        name = lexValue;
+        if (name.back() == '*') {
+            name = name.substr(0, name.length() - 1);
+            access = true;
+        }
         goto _1;
     }
     return false;
@@ -577,7 +664,9 @@ _1:
     }
     return erMessage("Symbol '=' expected");
 _2:
-    if(isType()) {
+    std::pair<bool, TypeContext*> typeRes = isType();
+    if(typeRes.first) {
+        curModule.AddNamedArtefact(name, typeRes.second, access);
         goto _end;
     }
     return erMessage("Type value expected");
@@ -587,42 +676,89 @@ _end:
 
 //-----------------------------------------------------------------------------
 // type = qualident | ArrayType | RecordType | PointerType | ProcedureType.
-bool ModuleCompiler::isType() {
+std::pair<bool, TypeContext*> ModuleCompiler::isType() {
 //_0:
-    if(isArrayType()) {
+    TypeContext* resType;
+
+    std::pair<bool, TypeContext*> arrayCheckRes = isArrayType();
+    if(arrayCheckRes.first) {
+        resType = arrayCheckRes.second;
         goto _end;
     }
-    if(isRecordType()) {
+
+    std::pair<bool, TypeContext*> recordCheckRes = isRecordType();
+    if(recordCheckRes.first) {
+        resType = recordCheckRes.second;
         goto _end;
     }
-    if(isPointerType()) {
+
+    std::pair<bool, TypeContext*> pointerCheckRes = isPointerType();
+    if(pointerCheckRes.first) {
+        resType = pointerCheckRes.second;
         goto _end;
     }
-    if(isProcedureType()) {
+
+    std::pair<bool, TypeContext*> procCheckRes = isProcedureType();
+    if (procCheckRes.first) {
+        resType = procCheckRes.second;
         goto _end;
     }
+
     if(isQualident()) {
+        resType = getTypeFromQualident(lexValue);
+        if (resType == nullptr) {
+            return { erMessage("Unknown type: " + lexValue), nullptr };
+        }
         goto _end;
     }
-    return false;
+    return { false, nullptr };
 _end:
-    return true;
+    return { true, resType };
+}
+
+TypeContext* ModuleCompiler::getTypeFromQualident(std::string qualident) {
+    if (qualident == "INTEGER" || qualident == "BYTE") {
+        return creator.CreateTypeInt();
+    }
+    if (qualident == "BOOLEAN") {
+        return creator.CreateTypeBool();
+    }
+    if (qualident == "CHAR") {
+        return creator.CreateTypeChar();
+    }
+    if (qualident == "REAL") {
+        return creator.CreateTypeReal();
+    }
+    if (qualident == "SET") {
+        return creator.CreateTypeSet();
+    }
+    return curModule.GetTypeFromName(qualident); //TODO проверить, не может ли быть Модуль.идент
 }
 
 //-----------------------------------------------------------------------------
 // ArrayType = ARRAY length {"," length} OF type.
 // length = ConstExpression.
-bool ModuleCompiler::isArrayType() {
+std::pair<bool, TypeContext*> ModuleCompiler::isArrayType() {
 //_0:
     if(isKeyWord("ARRAY")) {
         goto _1;
     }
-    return false;
+    return { false, nullptr };
 _1:
-    if(isConstExpression()) {
+    int size;
+    std::pair<bool, ConstContext*> checkRes = isConstExpression();
+    if(checkRes.first) {
+        ConstContext* result = checkRes.second->getValue();
+        if (result->getType() == "ERR") {
+            return { erMessage("Error while constant evaluation: " + dynamic_cast<ConstErrContext*>(result)->getErrMsg()), nullptr };
+        }
+        if (result->getType() != "INT") {
+            return { erMessage("Constant Expression of type INT expected, got "+ result->getType()), nullptr };
+        }
+        size = (static_cast<ConstIntContext*>(result))->getIntValue();
         goto _2;
     }
-    return erMessage("Constant Expression expected");
+    return { erMessage("Constant Expression expected"), nullptr };
 _2:
     if(isSymbol(moduleStr[pos], ',')) {
         ++pos;
@@ -633,26 +769,29 @@ _2:
     if(isKeyWord("OF")) {
         goto _3;
     }
-    return erMessage("Symbol ',' or Key word OF expected");
+    return { erMessage("Symbol ',' or Key word OF expected"), nullptr };
 _3:
-    if(isType()) {
+    std::pair<bool, TypeContext*> resType = isType();
+    if (resType.first) {
         goto _end;
     }
-    return erMessage("Type value expected");
+    return { erMessage("Type value expected"), nullptr };
 _end:
-    return true;
+    return { true, creator.CreateTypeArray(resType.second, size)};
 }
 
 //-----------------------------------------------------------------------------
 // RecordType = RECORD ["(" BaseType ")"] [FieldListSequence] END.
 // BaseType = qualident.
 // FieldListSequence = FieldList {";" FieldList}.
-bool ModuleCompiler::isRecordType() {
+std::pair<bool, TypeContext*> ModuleCompiler::isRecordType() {
 //_0:
+    TypeRecordContext* record;
+    TypeContext* parent;
     if(isKeyWord("RECORD")) {
         goto _1;
     }
-    return false;
+    return { false, nullptr };
 _1:
     if(isSymbol(moduleStr[pos], '(')) {
         ++pos;
@@ -660,18 +799,24 @@ _1:
         ignore();
         goto _2;
     }
-    if(isFieldList()) {
+    record = creator.CreateTypeRecord();
+    if(isFieldList(record)) {
         goto _5;
     }
     if(isKeyWord("END")) {
         goto _end;
     }
-    return erMessage("Symbol '(' or Key word END or Field list expected");
+    return { erMessage("Symbol '(' or Key word END or Field list expected"), nullptr };
 _2:
     if(isQualident()) {
-        goto _3;
+        TypeContext* parent = getTypeFromQualident(lexValue);
+        if (TypeRecordContext* recordType = dynamic_cast<TypeRecordContext*>(parent)) {
+            record = creator.CreateTypeRecord(recordType);
+            goto _3;
+        }
+        return { erMessage("Expected record type"), nullptr };
     }
-    return erMessage("Qualident expected");
+    return { erMessage("Qualident expected"), nullptr };
 _3:
     if(isSymbol(moduleStr[pos], ')')) {
         ++pos;
@@ -679,15 +824,15 @@ _3:
         ignore();
         goto _4;
     }
-    return erMessage("Symbol ')' expected");
+    return { erMessage("Symbol ')' expected"), nullptr };
 _4:
-    if(isFieldList()) {
+    if(isFieldList(record)) {
         goto _5;
     }
     if(isKeyWord("END")) {
         goto _end;
     }
-    return erMessage("Key word END or Field list expected");
+    return { erMessage("Key word END or Field list expected"), nullptr };
 _5:
     if(isSymbol(moduleStr[pos], ';')) {
         ++pos;
@@ -698,22 +843,24 @@ _5:
     if(isKeyWord("END")) {
         goto _end;
     }
-    return erMessage("Key word END or Symbol ';' expected");
+    return { erMessage("Key word END or Symbol ';' expected"), nullptr };
 _6:
-    if(isFieldList()) {
+    if(isFieldList(record)) {
         goto _5;
     }
-    return erMessage("Field list expected");
+    return { erMessage("Field list expected"), nullptr };
 _end:
-    return true;
+    return { true, record };
 }
 
 //-----------------------------------------------------------------------------
 // FieldList = IdentList ":" type.
 // IdentList = identdef {"," identdef}.
-bool ModuleCompiler::isFieldList() {
+bool ModuleCompiler::isFieldList(TypeRecordContext* record) {
 //_0:
+    std::vector<std::string> names;
     if(isIdentdef()) {
+        names.push_back(lexValue);
         goto _1;
     }
     return false;
@@ -733,11 +880,22 @@ _1:
     return erMessage("Symbols ',' or ':' expected");
 _2:
     if(isIdentdef()) {
+        names.push_back(lexValue);
         goto _1;
     }
     return erMessage("Idendef expected");
 _3:
-    if(isType()) {
+    std::pair<bool, TypeContext*> resType = isType();
+    if (resType.first) {
+        for (std::string name : names) {
+            if (name.back() == '*') {
+                name = name.substr(0, name.length() - 1);
+                record->AddNamedModuleField(name, resType.second, true);
+            }
+            else {
+                record->AddNamedModuleField(name, resType.second, false);
+            }
+        }
         goto _end;
     }
     return erMessage("Type expected");
@@ -748,46 +906,52 @@ _end:
 
 //-----------------------------------------------------------------------------
 // PointerType = POINTER TO type.
-bool ModuleCompiler::isPointerType() {
+std::pair<bool, TypeContext*> ModuleCompiler::isPointerType() {
 //_0:
     if(isKeyWord("POINTER")) {
         goto _1;
     }
-    return false;
+    return { false, nullptr };
 _1:
     if(isKeyWord("TO")) {
         goto _2;
     }
-    return erMessage("POINTER TO expected");
+    return {erMessage("POINTER TO expected"), nullptr };
 _2:
-    if(isType()) {
-        goto _end;
+    TypeRecordContext* recordType;
+    std::pair<bool, TypeContext*> resType = isType();
+    if(resType.first) {
+        if (recordType = dynamic_cast<TypeRecordContext*>(resType.second)) {
+            goto _end;
+        }
+        return { erMessage("Expected record type"), nullptr };
     }
-    return erMessage("Type expected");
+    return {erMessage("Type expected"), nullptr };
 _end:
-    return true;
+    return {true, creator.CreateTypePointer(recordType) };
 }
 
 //-----------------------------------------------------------------------------
 // ProcedureType = PROCEDURE [FormalParameters].
-bool ModuleCompiler::isProcedureType() {
+std::pair<bool, ProcContext*> ModuleCompiler::isProcedureType() {
 //_0:
     if(isKeyWord("PROCEDURE")) {
         goto _1;
     }
-    return false;
+    return { false, nullptr };
 _1:
-    if(isFormalParameters()) {
+    ProcContext* proc = new ProcContext();
+    if(isFormalParameters(proc)) {
         goto _end;
     }
     goto _end;
 _end:
-    return true;
+    return { true, proc };
 }
 
 //-----------------------------------------------------------------------------
 // FormalParameters = "(" [FPSection {";" FPSection}] ")" [":" qualident].
-bool ModuleCompiler::isFormalParameters() {
+bool ModuleCompiler::isFormalParameters(ProcContext* proc) {
 //_0:
     if(isSymbol(moduleStr[pos], '(')) {
         ++pos;
@@ -803,7 +967,7 @@ _1:
         ignore();
         goto _3;
     }
-    if(isFPSection()) {
+    if(isFPSection(proc)) {
         goto _2;
     }
     return erMessage("FPSection expected");
@@ -833,7 +997,12 @@ _3:
     ///return erMessage("':' expected");
 _4:
     if(isQualident()) {
-        goto _end;
+        TypeContext* returnType = getTypeFromQualident(lexValue);
+        if (returnType != nullptr) {
+            proc->setResultType(returnType);
+            goto _end;
+        }
+        return erMessage("Unknown type: "+lexValue);
     }
     return erMessage("Qualident expected");
 _end:
@@ -843,17 +1012,20 @@ _end:
 //-----------------------------------------------------------------------------
 // FPSection = [VAR] ident {"," ident} ":" FormalType.
 // FormalType = {ARRAY OF} qualident.
-bool ModuleCompiler::isFPSection() {
+bool ModuleCompiler::isFPSection(ProcContext* proc) {
 //_0:
+    std::vector<std::string> names;
     if(isKeyWord("VAR")) {
         goto _1;
     }
     if(isIdent()) {
+        names.push_back(lexValue);
         goto _2;
     }
     return false;
 _1:
     if(isIdent()) {
+        names.push_back(lexValue);
         goto _2;
     }
     // Вывод сообщения об ошибке
@@ -877,17 +1049,33 @@ _3:
         goto _4;
     }
     if(isQualident()) {
-        goto _end;
+        TypeContext* argType = getTypeFromQualident(lexValue);
+        if (argType != nullptr) {
+            for (std::string name: names) {
+                proc->AddNamedArtefact(name, argType);
+            }
+            //proc->setResultType(returnType);
+            goto _end;
+        }
+        return erMessage("Unknown type: " + lexValue);
     }
     return erMessage("Key word ARRAY or Qualident expected");
 _4:
     if(isKeyWord("OF")) {
-        goto _5;
+        goto _5; //TODO по отчету об Обероне 7 кажется, что может быть много Array of подряд. Возможно поставить тут _3
     }
     return erMessage("Key word OF expected");
 _5:
     if(isQualident()) {
-        goto _end;
+        TypeContext* argType = getTypeFromQualident(lexValue);
+        if (argType != nullptr) {
+            TypeArrayContext* arrayArgType = creator.CreateTypeArray(argType, 0);
+            for (std::string name : names) {
+                proc->AddNamedArtefact(name, arrayArgType);
+            }
+            goto _end;
+        }
+        return erMessage("Unknown type: ARRAY OF " + lexValue);
     }
     return erMessage("Qualident expected");
 _end:
@@ -899,7 +1087,9 @@ _end:
 // IdentList = identdef {"," identdef}.
 bool ModuleCompiler::isVariableDeclaration() {
 //_0:
-    if(isIdentdef()) {
+    std::vector<std::string> names;
+    if (isIdentdef()) {
+        names.push_back(lexValue);
         goto _1;
     }
     return false;
@@ -919,11 +1109,22 @@ _1:
     return erMessage("Symbols ',' or ':' expected");
 _2:
     if(isIdentdef()) {
+        names.push_back(lexValue);
         goto _1;
     }
     return erMessage("Idendef expected");
 _3:
-    if(isType()) {
+    std::pair<bool, TypeContext*> resType = isType();
+    if (resType.first) {
+        for (std::string name : names) {
+            if (name.back() == '*') {
+                name = name.substr(0, name.length() - 1);
+                curModule.AddNamedArtefact(name, creator.CreateVariable(name, resType.second), true);
+            }
+            else {
+                curModule.AddNamedArtefact(name, creator.CreateVariable(name, resType.second), false);
+            }
+        }
         goto _end;
     }
     return erMessage("Type expected");
@@ -935,7 +1136,8 @@ _end:
 // ProcedureDeclaration = ProcedureHeading ";" ProcedureBody ident.
 bool ModuleCompiler::isProcedureDeclaration() {
 //_0:
-    if(isProcedureHeading()) {
+    std::pair<bool, ProcContext*> isProcHeadRes = isProcedureHeading();
+    if(isProcHeadRes.first) {
         goto _1;
     }
     return false;
@@ -963,24 +1165,34 @@ _end:
 
 //-----------------------------------------------------------------------------
 // ProcedureHeading = PROCEDURE identdef [FormalParameters].
-bool ModuleCompiler::isProcedureHeading() {
+std::pair<bool, ProcContext*> ModuleCompiler::isProcedureHeading() {
 //_0:
     if(isKeyWord("PROCEDURE")) {
         goto _1;
     }
-    return false;
+    return { false, nullptr };
 _1:
+    ProcContext* proc = new ProcContext();
     if(isIdentdef()) {
+        std::string name = lexValue;
+        if (name.back() == '*') {
+            name = name.substr(0, name.length() - 1);
+            curModule.AddNamedArtefact(name, proc, true);
+        }
+        else {
+            curModule.AddNamedArtefact(name, proc, false);
+        }
+        proc->setProcedureName(name);
         goto _2;
     }
-    return erMessage("Identdef expected");
+    return { erMessage("Identdef expected"), nullptr };
 _2:
-    if(isFormalParameters()) {
+    if(isFormalParameters(proc)) {
         goto _end;
     }
     goto _end;
 _end:
-    return true;
+    return { true, proc };
 }
 
 //-----------------------------------------------------------------------------
@@ -988,6 +1200,7 @@ _end:
 //                 [RETURN expression] END.
 bool ModuleCompiler::isProcedureBody() {
 //_0:
+    std::pair<bool, std::vector<StatementContext*>> stSeqCheckRes;
     if(isDeclarationSequence()) {
         goto _1;
     }
@@ -1013,7 +1226,8 @@ _1:
     }
     return erMessage("");
 _2:
-    if(isStatementSequence()) {
+    stSeqCheckRes = isStatementSequence();
+    if (stSeqCheckRes.first) {
         goto _3;
     }
     if(isKeyWord("RETURN")) {
@@ -1032,7 +1246,8 @@ _3:
     }
     return erMessage("RETURN or END expected");
 _4:
-    if(isExpression()) {
+    std::pair<bool, ExprContext*> checkRes = isExpression();
+    if (checkRes.first) {
         goto _5;
     }
     return erMessage("Expression expected");
@@ -1047,9 +1262,12 @@ _end:
 
 //-----------------------------------------------------------------------------
 // StatementSequence = statement {";" statement}.
-bool ModuleCompiler::isStatementSequence() {
+std::pair<bool, std::vector<StatementContext*>> ModuleCompiler::isStatementSequence() {
 //_0:
-    if(isStatement()) {
+    std::vector<StatementContext*> res;
+    std::pair<bool, StatementContext*> checkRes1 = isStatement();
+    if (checkRes1.first) {
+        res.push_back(checkRes1.second);
         goto _1;
     }
     if(isSymbol(moduleStr[pos], ';')) {
@@ -1058,7 +1276,7 @@ bool ModuleCompiler::isStatementSequence() {
         ignore();
         goto _1;
     }
-    return false;
+    return { false, res };
 _1:
     if(isSymbol(moduleStr[pos], ';')) {
         ++pos;
@@ -1068,7 +1286,9 @@ _1:
     }
     goto _end;
 _2:
-    if(isStatement()) {
+    std::pair<bool, StatementContext*> checkRes2 = isStatement();
+    if (checkRes2.first) {
+        res.push_back(checkRes2.second);
         goto _1;
     }
     if(isSymbol(moduleStr[pos], ';')) {
@@ -1079,53 +1299,56 @@ _2:
     }
     goto _end;
 _end:
-    return true;
+    return { true, res };
 }
 
 //-----------------------------------------------------------------------------
 // statement = [assignment | ProcedureCall | IfStatement | CaseStatement |
 //             WhileStatement | RepeatStatement | ForStatement].
-bool ModuleCompiler::isStatement() {
+std::pair<bool, StatementContext*> ModuleCompiler::isStatement() {
     if(isIfStatement()) {
-        return true;
+        return { true, nullptr };
     }
     if(isCaseStatement()) {
-        return true;
+        return { true, nullptr };
     }
     if(isWhileStatement()) {
-        return true;
+        return { true, nullptr };
     }
     if(isRepeatStatement()) {
-        return true;
+        return { true, nullptr };
     }
     if(isForStatement()) {
-        return true;
+        return { true, nullptr };
     }
     ///if(isAssignmentOrProcedureCall()) {
     ///    return true;
     ///}
-    if(isAssignment()) {
-        return true;
+    std::pair<bool, StatementContext*> asgnCheck = isAssignment();
+    if(asgnCheck.first) {
+        return { true, asgnCheck.second };
     }
     if(isProcedureCall()) {
-        return true;
+        return { true, nullptr };
     }
-    return false;
+    return { false, nullptr };
 }
 
 //-----------------------------------------------------------------------------
 // assignment = designator ":=" expression.
-bool ModuleCompiler::isAssignment() {
+std::pair<bool, StatementContext*> ModuleCompiler::isAssignment() {
     Location l;
     storeLocation(l);
     /// Тестовая точка входа в правило
     ///std::cout << "----> isAssignment" << std::endl;
 //_0:
+    std::string varName;
     if(isDesignator()) {
+        varName = lexValue;
         goto _1;
     }
     restoreLocation(l);
-    return false;
+    return { false, nullptr };
 _1:
     if(moduleStr[pos]==':' && moduleStr[pos+1]=='=') {
         pos += 2;
@@ -1136,17 +1359,26 @@ _1:
     }
     // Откат на анализ вызова процедуры
     restoreLocation(l);
-    return false;
+    return { false, nullptr };
     // return erMessage("':=' expected");
 _2:
-    if(isExpression()) {
+    VarContext* var;
+    var = curModule.GetVarFromName(varName);
+    if (var == nullptr) {
+        return { erMessage("Incorrect variable name: "+varName) , nullptr};
+    }
+    std::pair<bool, ExprContext*> checkRes = isExpression();
+    if (checkRes.first) {
+        if (var->getType()->getTypeName() != checkRes.second->getResType()) {
+            return { erMessage("Incorrect variable assignment: Can't assign " + checkRes.second->getResType() + " to " + var->getType()->getTypeName()) , nullptr};
+        }
         goto _end;
     }
-    return erMessage("Expression expected");
+    return { erMessage("Expression expected"), nullptr };
 _end:
     /// Тестовая точка выхода из правила
     ///std::cout << "isAssignmentOrProcedure ---->" << std::endl;
-    return true;
+    return { true, creator.CreateAssignmentStatement(var, checkRes.second)};
 }
 
 //-----------------------------------------------------------------------------
@@ -1172,12 +1404,15 @@ _end:
 //              [ELSE StatementSequence] END.
 bool ModuleCompiler::isIfStatement() {
 //_0:isAssignmentOrProcedure
+    std::pair<bool, std::vector<StatementContext*>> stSeqCheckRes;
+    std::pair<bool, std::vector<StatementContext*>> stSeqCheckRes2;
     if(isKeyWord("IF")) {
         goto _1;
     }
     return false;
 _1:
-    if(isExpression()) {
+    std::pair<bool, ExprContext*> checkRes = isExpression();
+    if (checkRes.first) {
         goto _2;
     }
     return erMessage("Expression expected");
@@ -1187,7 +1422,8 @@ _2:
     }
     return erMessage("Key word THEN expected");
 _3:
-    if(isStatementSequence()) {
+    stSeqCheckRes = isStatementSequence();
+    if(stSeqCheckRes.first) {
         goto _4;
     }
     if(isKeyWord("ELSIF")) {
@@ -1212,7 +1448,8 @@ _4:
     }
     return erMessage("ELSIF or ELSE or END expected");
 _5:
-    if(isStatementSequence()) {
+    stSeqCheckRes2 = isStatementSequence();
+    if (stSeqCheckRes2.first) {
         goto _6;
     }
     if(isKeyWord("END")) {
@@ -1241,7 +1478,8 @@ bool ModuleCompiler::isCaseStatement() {
     }
     return false;
 _1:
-    if(isExpression()) {
+    std::pair<bool, ExprContext*> checkRes = isExpression();
+    if (checkRes.first) {
         goto _2;
     }
     return erMessage("Expression expected");
@@ -1308,7 +1546,8 @@ _6:
     }
     return erMessage("',' or ':' expected");
 _7:
-    if(isStatementSequence()) {
+    std::pair<bool, std::vector<StatementContext*>> stSeqCheckRes = isStatementSequence();
+    if (stSeqCheckRes.first) {
         goto _8;
     }
     if(isSymbol(moduleStr[pos], '|')) {
@@ -1346,7 +1585,8 @@ bool ModuleCompiler::isWhileStatement() {
         }
         return false;
     _1:
-        if(isExpression()) {
+        std::pair<bool, ExprContext*> checkRes = isExpression();
+        if (checkRes.first) {
             goto _2;
         }
         return erMessage("Expression expected");
@@ -1356,7 +1596,8 @@ bool ModuleCompiler::isWhileStatement() {
         }
         return erMessage("Key word DO expected");
     _3:
-        if(isStatementSequence()) {
+        std::pair<bool, std::vector<StatementContext*>> stSeqCheckRes = isStatementSequence();
+        if (stSeqCheckRes.first) {
             goto _4;
         }
         if(isKeyWord("ELSIF")) {
@@ -1387,7 +1628,8 @@ bool ModuleCompiler::isRepeatStatement() {
     }
     return false;
 _1:
-    if(isStatementSequence()) {
+    std::pair<bool, std::vector<StatementContext*>> stSeqCheckRes = isStatementSequence();
+    if (stSeqCheckRes.first) {
         goto _2;
     }
     if(isKeyWord("UNTIL")) {
@@ -1400,7 +1642,8 @@ _2:
     }
     return erMessage("Key word UNTIL expected");
 _3:
-    if((isExpression())) {
+    std::pair<bool, ExprContext*> checkRes = isExpression();
+    if (checkRes.first) {
         goto _end;
     }
     return erMessage("Expression expected");
@@ -1432,7 +1675,8 @@ _2:
     }
     return erMessage("':=' expected");
 _3:
-    if((isExpression())) {
+    std::pair<bool, ExprContext*> checkRes1 = isExpression();
+    if (checkRes1.first) {
         goto _4;
     }
     return erMessage("Expression expected");
@@ -1442,7 +1686,8 @@ _4:
     }
     return erMessage("Key word TO expected");
 _5:
-    if((isExpression())) {
+    std::pair<bool, ExprContext*> checkRes2 = isExpression();
+    if(checkRes2.first) {
         goto _6;
     }
     return erMessage("Expression expected");
@@ -1455,7 +1700,8 @@ _6:
     }
     return erMessage("Key word BY or DO expected");
 _7:
-    if((isConstExpression())) {
+    std::pair<bool, ConstContext*> checkRes = isConstExpression();
+    if(checkRes.first) {
         goto _8;
     }
     return erMessage("Constant Expression expected");
@@ -1465,7 +1711,8 @@ _8:
     }
     return erMessage("Key word DO expected");
 _9:
-    if(isStatementSequence()) {
+    std::pair<bool, std::vector<StatementContext*>> stSeqCheckRes = isStatementSequence();
+    if (stSeqCheckRes.first) {
         goto _10;
     }
     if(isKeyWord("END")) {
@@ -1484,102 +1731,149 @@ _end:
 
 //-----------------------------------------------------------------------------
 // expression = SimpleExpression [relation SimpleExpression].
-bool ModuleCompiler::isExpression() {
+std::pair<bool, ExprContext*> ModuleCompiler::isExpression() {
 //_0:
-    std::string tmpValue = "";
-    if(isSimpleExpression()) {
+    std::string operName;
+    std::pair<bool, ExprContext*> checkRes1 = isSimpleExpression();
+    ExprContext* firstOperand;
+    if (checkRes1.first) {
+        firstOperand = checkRes1.second;
         goto _1;
     }
-    return false;
+    return { false, nullptr };
 _1:
     if(isRelation()) {
+        operName = lexValue;
         goto _2;
     }
     goto _end;
 _2:
-    if(isSimpleExpression()) {
+    std::pair<bool, ExprContext*> checkRes2 = isSimpleExpression();
+    if (checkRes2.first) {
+        firstOperand = creator.CreateExpr(firstOperand, checkRes2.second, operName);
         goto _end;
     }
-    return erMessage("Simple Expression expected");
+    return { erMessage("Simple Expression expected"), nullptr };
 _end:
-    return true;
+    return { true, firstOperand };
 }
 
 //-----------------------------------------------------------------------------
 // SimpleExpression = ["+" | "-"] term {AddOperator term}.
-bool ModuleCompiler::isSimpleExpression() {
+std::pair<bool, ExprContext*> ModuleCompiler::isSimpleExpression() {
 //_0:
+    std::string unarOpName = "";
+    std::string operName;
+    ExprContext* firstOperand = nullptr;
     std::string tmpValue = "";
     if(isSymbol(moduleStr[pos], '+')) {
         ++pos;
         ++column;
         ignore();
+        unarOpName = "+";
         goto _1;
     }
     if(isSymbol(moduleStr[pos], '-')) {
         ++pos;
         ++column;
         ignore();
+        unarOpName = "-";
         goto _1;
     }
-    if(isTerm()) {
+    std::pair<bool, ExprContext*> checkRes1 = isTerm();
+    if (checkRes1.first) {
+        firstOperand = checkRes1.second;
         goto _2;
     }
-    return false;
+    return { false, nullptr };
 _1:
-    if(isTerm()) {
+    std::pair<bool, ExprContext*> checkRes2 = isTerm();
+    if (checkRes2.first) {
+        if (firstOperand != nullptr) {
+            firstOperand = creator.CreateExpr(firstOperand, checkRes2.second, operName);
+        }
+        else {
+            firstOperand = creator.CreateUnarExpr(checkRes2.second, unarOpName);
+        }
         goto _2;
     }
-    return erMessage("Term expected");
+    return { erMessage("Term expected"), nullptr };
 _2:
     if(isAddOperator()) {
+        operName = lexValue;
         goto _1;
     }
     goto _end;
 _end:
-    return true;
+    return { true, firstOperand };
 }
 
 //-----------------------------------------------------------------------------
 // term = factor {MulOperator factor}.
-bool ModuleCompiler::isTerm() {
+std::pair<bool, ExprContext*> ModuleCompiler::isTerm() {
 //_0:
-    if(isFactor()) {
+    std::pair<bool, ExprContext*> checkRes1 = isFactor();
+    std::string operName;
+    ExprContext* firstOperand;
+    if (checkRes1.first) {
+        firstOperand = checkRes1.second;
         goto _1;
     }
-    return false;
+    return { false, nullptr };
 _1:
     if(isMulOperator()) {
+        operName = lexValue;
         goto _2;
     }
     goto _end;
 _2:
-    if(isFactor()) {
+    std::pair<bool, ExprContext*> checkRes2 = isFactor();
+    if (checkRes2.first) {
+        firstOperand = creator.CreateExpr(firstOperand, checkRes2.second, operName);
         goto _1;
     }
-    return erMessage("Factor expected");
+    return { erMessage("Factor expected"), nullptr };
 _end:
-    return true;
+    return { true, firstOperand };
 }
 
 //-----------------------------------------------------------------------------
 // factor = number | string | NIL | TRUE | FALSE |
 //       set | designator [ActualParameters] | "(" expression ")" | "~" factor.
-bool ModuleCompiler::isFactor() {
+// number = integer | real
+std::pair<bool, ExprContext*> ModuleCompiler::isFactor() {
 //_0:
+    ExprContext* factor;
     if(isKeyWord("NIL")) {
+        factor = creator.CreateNilExpr();
         goto _end;
     }
     if(isKeyWord("TRUE")) {
+        factor = creator.CreateBoolExpr(true);
         goto _end;
     }
     if(isKeyWord("FALSE")) {
+        factor = creator.CreateBoolExpr(false);
         goto _end;
     }
     if(isString()) {
+        factor = creator.CreateStringExpr(lexValue);
         goto _end;
     }
-    if(isNumber()) {
+    if (isReal()) {
+        float floatLexValue = std::stof(lexValue.c_str(), 0);
+        factor = creator.CreateRealExpr(floatLexValue);
+        goto _end;
+    }
+    if (isInteger()) {
+        int intLexValue;
+        if (lexValue.back() == 'H') {
+            intLexValue = std::stoll(lexValue.substr(0, lexValue.length() - 1).c_str(), 0, 16);
+        }
+        else {
+            intLexValue = std::atoi(lexValue.c_str());
+        }
+        factor = creator.CreateIntExpr(intLexValue);
         goto _end;
     }
     if(isSet()) {
@@ -1598,14 +1892,17 @@ bool ModuleCompiler::isFactor() {
         goto _3;
     }
     if(isDesignator()) {
+        factor = creator.CreateConstValueExpr(curModule.GetConstFromName(lexValue)); //TODO variable use
         goto _4;
     }
-    return false;
+    return { false,nullptr };
 _1:
-    if(isExpression()) {
+    std::pair<bool, ExprContext*> checkRes1 = isExpression();
+    if (checkRes1.first) {
+        factor = checkRes1.second;
         goto _2;
     }
-    return erMessage("Expression expected");
+    return { erMessage("Expression expected"), nullptr };
 _2:
     if(isSymbol(moduleStr[pos], ')')) {
         ++pos;
@@ -1613,19 +1910,20 @@ _2:
         ignore();
         goto _end;
     }
-    return erMessage("Right bracket expected");
+    return { erMessage("Right bracket expected"),nullptr };
 _3:
-    if(isFactor()) {
+    std::pair<bool, ExprContext*> checkRes2 = isFactor();
+    if (checkRes2.first) {
         goto _end;
     }
-    return erMessage("Factor expected");
+    return { erMessage("Factor expected"), nullptr };
 _4:
     if(isActualParameters()) {
         goto _end;
     }
     goto _end;
 _end:
-    return true;
+    return { true, factor };
 }
 
 //-----------------------------------------------------------------------------
@@ -1676,7 +1974,8 @@ _2:
     }
     return erMessage("'.' expected");
 _3:
-    if(isExpression()) {
+    std::pair<bool, ExprContext*> checkRes = isExpression();
+    if (checkRes.first) {
         goto _4;
     }
     return erMessage("ExpList expected");
@@ -1743,7 +2042,8 @@ _1:
         ignore();
         goto _end;
     }
-    if(isExpression()) {
+    std::pair<bool, ExprContext*> checkRes1 = isExpression();
+    if (checkRes1.first) {
         goto _2;
     }
     return erMessage("'}' or Expression expected");
@@ -1769,7 +2069,8 @@ _2:
     }
     return erMessage("'..'or '}' or ',' expected");
 _3:
-    if(isExpression()) {
+    std::pair<bool, ExprContext*> checkRes2 = isExpression();
+    if (checkRes2.first) {
         goto _4;
     }
     return erMessage("Expression expected");
@@ -1823,7 +2124,8 @@ _1:
         ignore();
         goto _end;
     }
-    if(isExpression()) {
+    std::pair<bool, ExprContext*> checkRes = isExpression();
+    if (checkRes.first) {
         goto _2;
     }
     return erMessage("')' or Expression expected");

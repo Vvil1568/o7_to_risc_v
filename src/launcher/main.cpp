@@ -20,8 +20,8 @@ void print_help() {
 
 int main(int argc, const char *argv[])
 {
-    std::string fileName;
-        
+    std::string fileName = "D:\\HSE\\oberon7compiler\\workspace\\o7\\big\\32.o7";
+    /*
     if (argc != 3 || strcmp(argv[1], "--file")!=0) {
         print_help();
         return 0;
@@ -30,7 +30,7 @@ int main(int argc, const char *argv[])
         fileName = argv[2];
         std::cout << "file is: " << fileName << "\n";
     }
-    
+    */
     // После получения имен открытие и чтение файла с модулем
     // с последующей передачей их на обработку.
     // Пока файл с модулем открывается напрямую.

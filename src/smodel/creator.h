@@ -9,7 +9,9 @@
 #include "type.h"
 #include "variable.h"
 #include "module.h"
-
+#include "procedure.h"
+#include "expr.h"
+#include "statement.h"
 
 // Класс, обеспечивающий создание различных артефактов
 class Creator
@@ -28,6 +30,31 @@ public:
     ConstContext* CreateConstBool(bool v);
     // Создание строковой константы
     ConstContext* CreateConstString(std::string v);
+    // Создание константы NIL
+    ConstContext* CreateConstNil();
+    // Создание константного унарного выражения
+    ConstContext* CreateConstUnarExpr(ConstContext* operand, std::string opName);
+    // Создание константного выражения
+    ConstContext* CreateConstExpr(ConstContext* left, ConstContext* right, std::string opName);
+
+    // Создание целочисленного литерала
+    ExprContext* CreateIntExpr(int v);
+    // Создание действительного литерала
+    ExprContext* CreateRealExpr(double v);
+    // Создание булевского литерала
+    ExprContext* CreateBoolExpr(bool v);
+    // Создание строкового литерала
+    ExprContext* CreateStringExpr(std::string v);
+    // Создание литерала NIL
+    ExprContext* CreateNilExpr();
+    // Создание унарного выражения
+    ExprContext* CreateUnarExpr(ExprContext* operand, std::string opName);
+    // Создание выражения
+    ExprContext* CreateExpr(ExprContext* left, ExprContext* right, std::string opName);
+    // Создание выражения значения константы
+    ExprContext* CreateConstValueExpr(ConstContext* constant);
+    // Создание выражения значения переменной
+    ExprContext* CreateVarValueExpr(VarContext* variable);
 
     // Создание целочисленного типа
     TypeIntegerContext* CreateTypeInt();
@@ -46,8 +73,13 @@ public:
     // Создание типа-указателя на запись
     TypePointerContext* CreateTypePointer(TypeRecordContext* r);
 
+    // Создание типа-массива
+    TypeArrayContext* CreateTypeArray(TypeContext* type, int size);
+
     // Создание переменной с установкой соответствующего типа
-    VarContext* CreateVariable(TypeContext* type);
+    VarContext* CreateVariable(std::string name, TypeContext* type);
+
+    StatementContext* CreateAssignmentStatement(VarContext* var, ExprContext* expr);
 };
 
 #endif // CREATOR_H
