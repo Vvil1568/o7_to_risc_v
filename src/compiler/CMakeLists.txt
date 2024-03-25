@@ -15,5 +15,6 @@ set(SOURCE_LIB
 
 add_library(compiler STATIC ${SOURCE_LIB})   # Создание статической библиотеки
 include_directories(${CMAKE_SOURCE_DIR}/src/smodel)
+include_directories(${CMAKE_SOURCE_DIR}/src/codegen)
 
-target_link_libraries(compiler smodel)     # Линковка программы с библиотекой
+target_link_libraries(compiler smodel codegen)     # Линковка программы с библиотекой

@@ -7,6 +7,7 @@
 #include <utility>
 #include <cctype>
 #include "creator.h"
+#include "registerpool.h"
 
 // Структура для временного хранения позиций во время разбора
 struct Location {
@@ -39,6 +40,7 @@ class ModuleCompiler {
     // Создатель элементов семантической модели
     Creator creator;
     Module curModule;
+    RegisterPool regPool = RegisterPool();
     //Get the qualident type
     TypeContext* getTypeFromQualident(std::string qualident);
 public:

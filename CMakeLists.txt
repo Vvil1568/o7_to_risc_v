@@ -12,5 +12,5 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${BINARY_DIR}/../lib")
 
 add_subdirectory(src/compiler)
 add_subdirectory(src/launcher) 
-#add_subdirectory(src/tests)
+add_subdirectory(src/codegen)
 add_subdirectory(src/smodel)
