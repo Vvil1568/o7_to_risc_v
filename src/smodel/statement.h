@@ -17,6 +17,8 @@ public:
     virtual std::string getType() {
         return "UNDEFINED";
     }
+
+    virtual void generateAsmCode() {}
 };
 
 // Класс, определяющий контекст выражения присвоения.
@@ -27,7 +29,7 @@ public:
         this->var = var;
         this->expr = expr;
     }
-
+    
     // Вывод отладочной информации о выражении присвоения
     virtual void debugOut() {
         std::cout << "ASSIGNMENT";
@@ -36,6 +38,8 @@ public:
     virtual std::string getType() {
         return "ASSIGNMENT";
     }
+
+    virtual void generateAsmCode();
 private:
     // Переменная
     VarContext* var;

@@ -68,12 +68,19 @@ ConstContext* ConstUnarExprContext::getValue() {
         return new ConstBooleanContext(!val);
     }
     if (operName == "-" || operName == "+") {
-        if (operand->getType() != "INT") {
+        if (operand->getType() != "INT" && operand->getType() != "REAL") {
             return new ConstErrContext("Unsupported operation " + operName + " for type " + operand->getType());
         }
-        int val = (static_cast<ConstIntContext*>(operand))->getIntValue();
-        if (operName == "-") return new ConstIntContext(-val);
-        if (operName == "+") return new ConstIntContext(val);
+        if (operand->getType() == "INT") {
+            int val = (static_cast<ConstIntContext*>(operand))->getIntValue();
+            if (operName == "-") return new ConstIntContext(-val);
+            if (operName == "+") return new ConstIntContext(val);
+        }
+        else {
+            double val = (static_cast<ConstRealContext*>(operand))->getRealValue();
+            if (operName == "-") return new ConstRealContext(-val);
+            if (operName == "+") return new ConstRealContext(val);
+        }
     }
 }
 

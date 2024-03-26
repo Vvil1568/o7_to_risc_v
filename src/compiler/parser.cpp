@@ -54,12 +54,27 @@ void Compile(const char* str) {
     } else {
         std::cout << "FAIL" << std::endl;
     }
+    mc.getModule().CompileModule();
+    freopen("res.s", "w", stdout);
+    std::vector<std::string> asmData = CodeGenContext::getInstance().data;
+    for (std::string line : asmData) {
+        std::cout << line << std::endl;
+    }
+    std::vector<std::string> asmCode = CodeGenContext::getInstance().code;
+    for (std::string line : asmCode) {
+        std::cout << line << std::endl;
+    }
+    fclose(stdout);
 }
 
 // Конструктор, формирующий начальные установки параметров компилятора
 ModuleCompiler::ModuleCompiler(const char* str): moduleStr{str},
     pos{0}, line{1}, column{1}
 {}
+
+Module ModuleCompiler::getModule() {
+    return curModule;
+}
 
 //-----------------------------------------------------------------------------
 // Module = MODULE ident ";" [ImportList] DeclarationSequence

@@ -9,11 +9,14 @@
 #include "const.h"
 #include "type.h"
 #include "statement.h"
+#include "registerpool.h"
+#include "codegencontext.h"
 
 // Класс определяющий данные, непосредственно доступные для модуля и процедур
 class CommonData {
 public:
     void SetStatementSequence(std::vector<StatementContext*> statements);
+    std::vector<StatementContext*> GetStatementSequence();
 protected:
     static std::string moduleName;  // имя модуля
     // Список артефактов с зарезервированными именами
@@ -38,6 +41,8 @@ public:
 
     // Добавление именованного артефакта
     void AddNamedArtefact(std::string name, Context* context, bool access = false);
+
+    void CompileModule();
 
     TypeContext* GetTypeFromName(std::string name);
     ConstContext* GetConstFromName(std::string name);

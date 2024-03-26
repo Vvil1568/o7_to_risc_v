@@ -31,5 +31,5 @@ set(SOURCE_LIB
     expr.cpp
     statement.cpp
 )
-
+include_directories(${CMAKE_SOURCE_DIR}/src/codegen)
 add_library(smodel STATIC ${SOURCE_LIB} )   # Создание статической библиотеки

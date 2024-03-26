@@ -1,13 +1,23 @@
 #ifndef EXPR_H
 #define EXPR_H
 
+#include <iostream>
+#include <string>
+#include <vector>
+
+#include "type.h"
 #include "context.h"
 #include "variable.h"
 #include "const.h"
+#include "registerpool.h"
+#include "codegencontext.h"
+#include <algorithm>
 
 // Класс, определяющий контекст выражения.
 // Предполагается, что в языке существуют литералы основных типов
 class ExprContext : public Context {
+protected:
+    Register* assignedRegister = nullptr;
 public:
     // Вывод отладочной информации о контексте импорта
     virtual void debugOut() {
@@ -20,6 +30,17 @@ public:
     // Информации о типе контекста
     virtual std::string getType() {
         return "UNDEFINED";
+    }
+    virtual void AssignReg(Register* reg) {
+        assignedRegister = reg;
+    }
+    virtual void generateAsmCode() = 0;
+
+    virtual Register* getAssignedReg() {
+        if (assignedRegister == nullptr) {
+            assignedRegister = RegisterPool::getInstance().takeFirstFreeReg(RegType::T);
+        }
+        return assignedRegister;
     }
 };
 
@@ -40,6 +61,7 @@ public:
     int getIntValue() {
         return value;
     }
+    virtual void generateAsmCode();
 private:
     // Значение литерала
     int value;
@@ -61,6 +83,14 @@ public:
     }
     double getRealValue() {
         return value;
+    }
+    virtual void generateAsmCode();
+
+    virtual Register* getAssignedReg() {
+        if (assignedRegister == nullptr) {
+            assignedRegister = RegisterPool::getInstance().takeFirstFreeReg(RegType::FT);
+        }
+        return assignedRegister;
     }
 private:
     // Значение литерала
@@ -84,6 +114,7 @@ public:
     bool getBoolValue() {
         return value;
     }
+    virtual void generateAsmCode();
 private:
     // Значение константы
     bool value;
@@ -106,6 +137,7 @@ public:
     std::string getStrValue() {
         return value;
     }
+    virtual void generateAsmCode();
 private:
     // Значение константы
     std::string value;
@@ -130,6 +162,7 @@ public:
     virtual std::string getResType() {
         return constant->getValue()->getType();
     }
+    virtual void generateAsmCode();
 private:
     // Значение константы
     ConstContext* constant;
@@ -145,7 +178,7 @@ public:
 
     // Вывод отладочной информации о строковом литерале
     virtual void debugOut() {
-        std::cout << "VAR";
+        std::cout << "VAR " + variable->getName();
     }
     // Информации о типе контекста
     virtual std::string getType() {
@@ -154,6 +187,7 @@ public:
     virtual std::string getResType() {
         return variable->getType()->getTypeName();
     }
+    virtual void generateAsmCode();
 private:
     // Переменная
     VarContext* variable;
@@ -173,6 +207,7 @@ public:
     virtual std::string getType() {
         return "NIL";
     }
+    virtual void generateAsmCode();
 };
 
 // Класс, определяющий контекст ошибки.
@@ -192,6 +227,7 @@ public:
     virtual std::string getResType() {
         return "ERR: "+errMsg;
     }
+    virtual void generateAsmCode() {}
     std::string getErrMsg() {
         return errMsg;
     }
@@ -222,6 +258,8 @@ public:
     virtual std::string getType() {
         return "EXPR";
     }
+
+    virtual void generateAsmCode();
 private:
     // Левый операнд
     ExprContext* left;
@@ -250,6 +288,8 @@ public:
     virtual std::string getType() {
         return "EXPR";
     }
+
+    virtual void generateAsmCode();
 private:
     // Операнд
     ExprContext* operand;

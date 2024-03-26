@@ -1,9 +1,9 @@
 #include "module.h"
 
-std::string CommonData::moduleName{""};  // РёРјСЏ РјРѕРґСѓР»СЏ
-// РЎРїРёСЃРѕРє Р°СЂС‚РµС„Р°РєС‚РѕРІ СЃ Р·Р°СЂРµР·РµСЂРІРёСЂРѕРІР°РЅРЅС‹РјРё РёРјРµРЅР°РјРё
+std::string CommonData::moduleName{""};  // имя модуля
+// Список артефактов с зарезервированными именами
 std::vector<NamedArtefact*> CommonData::reservedNamedArtefacts;
-// РЎРїРёСЃРѕРє РёРјРµРЅРѕРІР°РЅРЅС‹С… Р°СЂС‚РµС„Р°РєС‚РѕРІ, РїРѕСЂРѕР¶РґР°РµРјС‹С… РІ РјРѕРґСѓР»Рµ
+// Список именованных артефактов, порождаемых в модуле
 std::vector<NamedArtefact*> CommonData::namedArtefacts;
 
 Module::Module()
@@ -11,11 +11,11 @@ Module::Module()
 
 }
 
-// Р”РѕР±Р°РІР»РµРЅРёРµ РёРјРµРЅРѕРІР°РЅРЅРѕРіРѕ Р°СЂС‚РµС„Р°РєС‚Р°
+// Добавление именованного артефакта
 void Module::AddNamedArtefact(std::string name, Context* context, bool access) {
     NamedArtefact* tmpNamed = new NamedArtefact{name, context, access};
     namedArtefacts.push_back(tmpNamed);
-    // РљРѕРЅС‚РµРєСЃС‚ РїРѕР»СѓС‡Р°РµС‚ РѕР±СЂР°С‚РЅСѓСЋ СЃСЃС‹Р»РєСѓ РЅР° РёРјРµРЅРѕРІР°РЅРЅС‹Р№ Р°СЂС‚РµС„Р°РєС‚
+    // Контекст получает обратную ссылку на именованный артефакт
     context->setNamedArtefact(tmpNamed);
 }
 
@@ -52,11 +52,24 @@ VarContext* Module::GetVarFromName(std::string name)
     return nullptr;
 }
 
+void Module::CompileModule() {
+    CodeGenContext::addCodeLine("#Модуль \"" + this->moduleName + "\"");
+    CodeGenContext::addCodeLine("module_" + moduleName + ":");
+    CodeGenContext::getInstance().codeIndent += "    ";
+    for (StatementContext* statement : GetStatementSequence()) {
+        statement->generateAsmCode();
+    }
+}
+
 void CommonData::SetStatementSequence(std::vector<StatementContext*> statements) {
     this->statements = statements;
 }
 
-// Р’С‹РІРѕРґ РѕС‚Р»Р°РґРѕС‡РЅРѕР№ РёРЅС„РѕСЂРјР°С†РёРё Рѕ РјРѕРґСѓР»Рµ
+std::vector<StatementContext*> CommonData::GetStatementSequence() {
+    return this->statements;
+}
+
+// Вывод отладочной информации о модуле
 void Module::debugOut() {
     std::cout << "Module " << CommonData::moduleName << std::endl;
     std::cout << "Reserved artefats: " << std::endl;

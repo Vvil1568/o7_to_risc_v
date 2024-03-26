@@ -40,13 +40,13 @@ class ModuleCompiler {
     // Создатель элементов семантической модели
     Creator creator;
     Module curModule;
-    RegisterPool regPool = RegisterPool();
     //Get the qualident type
     TypeContext* getTypeFromQualident(std::string qualident);
 public:
     // Конструктор, формирующий начальные установки параметров компилятора
     ModuleCompiler(const char* str);
     void InitParser(const char* str);
+    Module getModule();
 
     // Module
     bool isModule();
@@ -198,7 +198,6 @@ public:
         pos = l.pos;
         line = l.line;
         column = l.column;
-    }
-    
+    }    
 };
 #endif // PARSER_H
