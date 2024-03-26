@@ -16,10 +16,7 @@ public:
 		this->name = name;
 	}
 	bool operator<(const Register& other) const {
-		return this->name < other.name;
-	}
-	bool operator==(const Register& other) const {
-		return this->name == other.name;
+		return (this->name) < (other.name);
 	}
 	std::string getName() {
 		return name;
@@ -32,16 +29,30 @@ private:
 	std::string name;
 };
 
+//Компаратор для упорядоченного множества регистров
+struct RegisterComparator {
+	bool operator()(const Register* a, const Register* b) const {
+		return *a < *b; // Сравниваем значения объектов, а не указателей
+	}
+};
+
 //Класс представляет из себя пул регистров, содержит текущие доступные регистры
 class RegisterPool {
 public:
-	RegisterPool();
+	static RegisterPool& getInstance() {
+		static RegisterPool instance;
+		return instance;
+	}
 	//Позволяет забрать регистр нужного типа из пула регистров
-	Register takeFirstFreeReg(RegType type);
+	Register* takeFirstFreeReg(RegType type);
 	//Позволяет вернуть регистр в пул регистров
-	void freeRegister(Register name);
+	void freeRegister(Register* name);
+
+	RegisterPool(RegisterPool const&) = delete;
+	void operator=(RegisterPool const&) = delete;
 private: 
-	std::map<RegType, std::set<Register>> pool;
+	RegisterPool();
+	std::map<RegType, std::set<Register*, RegisterComparator>> pool;
 };
 
 #endif // REGISTERPOOL_H

@@ -2,38 +2,38 @@
 
 RegisterPool::RegisterPool() {
 	for (int i = 0; i < 7; i++) {
-		Register reg(RegType::T, "t" + i);
-		pool[reg.getType()].insert(reg);
+		Register* reg = new Register(RegType::T, "t" + std::to_string(i));
+		pool[reg->getType()].insert(reg);
 	}
 	for (int i = 0; i < 12; i++) {
-		Register reg(RegType::S, "s" + i);
-		pool[reg.getType()].insert(reg);
+		Register* reg = new Register(RegType::S, "s" + std::to_string(i));
+		pool[reg->getType()].insert(reg);
 	}
 	for (int i = 0; i < 8; i++) {
-		Register reg(RegType::A, "a" + i);
-		pool[reg.getType()].insert(reg);
+		Register* reg = new Register(RegType::A, "a" + std::to_string(i));
+		pool[reg->getType()].insert(reg);
 	}
 	for (int i = 0; i < 12; i++) {
-		Register reg(RegType::FT, "ft" + i);
-		pool[reg.getType()].insert(reg);
+		Register* reg = new Register(RegType::FT, "ft" + std::to_string(i));
+		pool[reg->getType()].insert(reg);
 	}
 	for (int i = 0; i < 12; i++) {
-		Register reg(RegType::FS, "fs" + i);
-		pool[reg.getType()].insert(reg);
+		Register* reg = new Register(RegType::FS, "fs" + std::to_string(i));
+		pool[reg->getType()].insert(reg);
 	}
 	for (int i = 0; i < 8; i++) {
-		Register reg(RegType::FA, "fa" + i);
-		pool[reg.getType()].insert(reg);
+		Register* reg = new Register(RegType::FA, "fa" + std::to_string(i));
+		pool[reg->getType()].insert(reg);
 	}
 }
 
-Register RegisterPool::takeFirstFreeReg(RegType type) {
-	Register reg = *(pool[type].begin());
+Register* RegisterPool::takeFirstFreeReg(RegType type) {
+	Register* reg = *(pool[type].begin());
 	pool[type].erase(pool[type].begin());
 	return reg;
 }
 
-void RegisterPool::freeRegister(Register reg)
+void RegisterPool::freeRegister(Register* reg)
 {
-	pool[reg.getType()].insert(reg);
+	pool[reg->getType()].insert(reg);
 }
