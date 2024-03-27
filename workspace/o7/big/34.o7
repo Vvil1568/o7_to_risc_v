@@ -1,0 +1,17 @@
+MODULE TestIf;
+
+VAR
+  a : INTEGER;
+  b : INTEGER;
+  c : INTEGER;
+BEGIN
+  a := 1;
+  b := 2;
+  IF a = b THEN
+    c := 1;
+  ELSIF a < b THEN
+    c := 2;
+  ELSE 
+    c := 3;
+  END
+END TestIf.

@@ -1,0 +1,19 @@
+MODULE TestGCD;
+
+VAR
+  a : INTEGER;
+  b : INTEGER;
+  nod : INTEGER;
+BEGIN
+  a := 18;
+  b := 30;
+ 
+  WHILE (a#0) & (b#0) DO
+    IF a > b THEN
+        a := a MOD b;
+    ELSE
+        b := b MOD a;
+    END
+  END;
+  nod := a + b;
+END TestGCD.

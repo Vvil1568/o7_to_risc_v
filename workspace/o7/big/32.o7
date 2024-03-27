@@ -3,5 +3,5 @@ MODULE TestExpr;
 VAR
   intVal : INTEGER;
 BEGIN
-  intVal := 1 + 2 + 3 + 4;
+  intVal := (1 + 2) * (4 - 3);
 END TestExpr.

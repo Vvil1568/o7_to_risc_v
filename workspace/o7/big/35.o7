@@ -1,0 +1,13 @@
+MODULE TestCase;
+
+VAR
+  a : INTEGER;
+  b : INTEGER;
+BEGIN
+  a := 1;
+  CASE a OF
+     1: b:=1
+   | 2,3: b:=2
+   | 4,5,6: b:=3
+  END
+END TestCase.

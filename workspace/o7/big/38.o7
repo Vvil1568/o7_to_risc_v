@@ -1,0 +1,11 @@
+MODULE TestRepeat;
+
+VAR
+  i : INTEGER;
+  a : INTEGER;
+BEGIN
+  a:=1;
+  FOR i:=10 TO 0 BY -2 DO
+    a := a * 2
+  END
+END TestRepeat.
