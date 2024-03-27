@@ -108,11 +108,11 @@ public:
     // CaseStatement
     std::pair<bool, StatementContext*> isCaseStatement();
     // WhileStatement
-    bool isWhileStatement();
+    std::pair<bool, StatementContext*> isWhileStatement();
     // RepeatStatement
-    bool isRepeatStatement();
+    std::pair<bool, StatementContext*> isRepeatStatement();
     // ForStatement
-    bool isForStatement();
+    std::pair<bool, StatementContext*> isForStatement();
     // expression
     std::pair<bool, ExprContext*> isExpression();
     // SimpleExpression

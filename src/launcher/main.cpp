@@ -20,7 +20,7 @@ void print_help() {
 
 int main(int argc, const char *argv[])
 {
-    std::string fileName = "D:\\HSE\\oberon7compiler\\workspace\\o7\\big\\32.o7";
+    std::string fileName = "D:\\HSE\\oberon7compiler\\workspace\\o7\\big\\38.o7";
     /*
     if (argc != 3 || strcmp(argv[1], "--file")!=0) {
         print_help();

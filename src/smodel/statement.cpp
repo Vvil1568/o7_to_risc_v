@@ -6,18 +6,18 @@ void AssignmentStatementContext::generateAsmCode() {
 	expr->generateAsmCode();
 }
 
-void ConditionalStatementsBlock::generateAsmCode(std::string blockEndLabel, std::string endLabel) {
+void genAsmForInvertedCond(ExprContext* condition, std::string label) {
 	if (condition != nullptr) {
-		CodeGenContext::addCodeLine("#Если условие неверно - переходим к концу блока по метке " + blockEndLabel);
+		CodeGenContext::addCodeLine("#Если условие неверно - переходим по метке " + label);
 		if (dynamic_cast<ExprExprContext*>(condition) == nullptr) {
 			condition->generateAsmCode();
-			CodeGenContext::addCodeLine("beqz "+condition->getAssignedReg()->getName() + " "+blockEndLabel);
+			CodeGenContext::addCodeLine("beqz " + condition->getAssignedReg()->getName() + " " + label);
 		}
 		else {
 			ExprExprContext* expr = dynamic_cast<ExprExprContext*>(condition);
-			if (expr->getLeft()->getResType() == "REAL" || expr->getOperator()=="OR" || expr->getOperator()=="&") {
+			if (expr->getLeft()->getResType() == "REAL" || expr->getOperator() == "OR" || expr->getOperator() == "&") {
 				condition->generateAsmCode();
-				CodeGenContext::addCodeLine("beqz " + condition->getAssignedReg()->getName() + " " + blockEndLabel);
+				CodeGenContext::addCodeLine("beqz " + condition->getAssignedReg()->getName() + " " + label);
 				if (condition->getType() != "VAR") {
 					RegisterPool::getInstance().freeRegister(condition->getAssignedReg());
 				}
@@ -26,22 +26,22 @@ void ConditionalStatementsBlock::generateAsmCode(std::string blockEndLabel, std:
 				expr->getLeft()->generateAsmCode();
 				expr->getRight()->generateAsmCode();
 				if (expr->getOperator() == "=") {
-					CodeGenContext::addCodeLine("bne " + expr->getLeft()->getAssignedReg()->getName() + " " + expr->getRight()->getAssignedReg()->getName() + " " + blockEndLabel);
+					CodeGenContext::addCodeLine("bne " + expr->getLeft()->getAssignedReg()->getName() + " " + expr->getRight()->getAssignedReg()->getName() + " " + label);
 				}
 				if (expr->getOperator() == "#") {
-					CodeGenContext::addCodeLine("beq " + expr->getLeft()->getAssignedReg()->getName() + " " + expr->getRight()->getAssignedReg()->getName() + " " + blockEndLabel);
+					CodeGenContext::addCodeLine("beq " + expr->getLeft()->getAssignedReg()->getName() + " " + expr->getRight()->getAssignedReg()->getName() + " " + label);
 				}
 				if (expr->getOperator() == "<") {
-					CodeGenContext::addCodeLine("bge " + expr->getLeft()->getAssignedReg()->getName() + " " + expr->getRight()->getAssignedReg()->getName() + " " + blockEndLabel);
+					CodeGenContext::addCodeLine("bge " + expr->getLeft()->getAssignedReg()->getName() + " " + expr->getRight()->getAssignedReg()->getName() + " " + label);
 				}
 				if (expr->getOperator() == ">") {
-					CodeGenContext::addCodeLine("ble " + expr->getLeft()->getAssignedReg()->getName() + " " + expr->getRight()->getAssignedReg()->getName() + " " + blockEndLabel);
+					CodeGenContext::addCodeLine("ble " + expr->getLeft()->getAssignedReg()->getName() + " " + expr->getRight()->getAssignedReg()->getName() + " " + label);
 				}
 				if (expr->getOperator() == ">=") {
-					CodeGenContext::addCodeLine("blt " + expr->getLeft()->getAssignedReg()->getName() + " " + expr->getRight()->getAssignedReg()->getName() + " " + blockEndLabel);
+					CodeGenContext::addCodeLine("blt " + expr->getLeft()->getAssignedReg()->getName() + " " + expr->getRight()->getAssignedReg()->getName() + " " + label);
 				}
 				if (expr->getOperator() == "<=") {
-					CodeGenContext::addCodeLine("bgt " + expr->getLeft()->getAssignedReg()->getName() + " " + expr->getRight()->getAssignedReg()->getName() + " " + blockEndLabel);
+					CodeGenContext::addCodeLine("bgt " + expr->getLeft()->getAssignedReg()->getName() + " " + expr->getRight()->getAssignedReg()->getName() + " " + label);
 				}
 				if (expr->getLeft()->getType() != "VAR") {
 					RegisterPool::getInstance().freeRegister(expr->getLeft()->getAssignedReg());
@@ -52,6 +52,10 @@ void ConditionalStatementsBlock::generateAsmCode(std::string blockEndLabel, std:
 			}
 		}
 	}
+}
+
+void ConditionalStatementsBlock::generateAsmCode(std::string blockEndLabel, std::string endLabel) {
+	genAsmForInvertedCond(condition, blockEndLabel);
 	for (StatementContext* statement : statements) {
 		statement->generateAsmCode();
 	}
@@ -76,6 +80,7 @@ void IfStatementContext::generateAsmCode() {
 	CodeGenContext::addCodeLine("#Метка конца условия");
 	CodeGenContext::addCodeLine(ifLabel + "_end:");
 	CodeGenContext::addCodeLine("#Конец условия");
+	CodeGenContext::popContext();
 }
 
 void CaseStatementContext::generateAsmCode() {
@@ -93,4 +98,69 @@ void CaseStatementContext::generateAsmCode() {
 	CodeGenContext::addCodeLine("#Метка конца оператора case");
 	CodeGenContext::addCodeLine(caseLabel + "_end:");
 	CodeGenContext::addCodeLine("#Конец оператора case");
+	CodeGenContext::popContext();
 }
+
+void WhileStatementsBlock::generateAsmCode(std::string blockEndLabel, std::string begLabel) {
+	genAsmForInvertedCond(condition, blockEndLabel);
+	for (StatementContext* statement : statements) {
+		statement->generateAsmCode();
+	}
+	CodeGenContext::addCodeLine("#Переходим к началу оператора while");
+	CodeGenContext::addCodeLine("b " + begLabel);
+	CodeGenContext::addCodeLine("#Метка конца while-блока");
+	CodeGenContext::addCodeLine(blockEndLabel + ":");
+}
+
+void WhileStatementContext::generateAsmCode() {
+	CodeGenContext::addCodeLine("#Начало цикла while");
+	std::string whileLabel = CodeGenContext::pushContext("while");
+	CodeGenContext::addCodeLine("#Метка начала цикла while");
+	CodeGenContext::addCodeLine(whileLabel + "_beg:");
+	int i = 0;
+	for (WhileStatementsBlock statement : statementBlocks) {
+		i++;
+		CodeGenContext::addCodeLine("#Начало " + std::to_string(i) + "-го while-блока");
+		CodeGenContext::getInstance().codeIndent += "    ";
+		statement.generateAsmCode(whileLabel + "_block" + std::to_string(i), whileLabel + "_beg");
+		CodeGenContext::getInstance().codeIndent.resize(CodeGenContext::getInstance().codeIndent.size() - 4);
+		CodeGenContext::addCodeLine("#Конец " + std::to_string(i) + "-го while-блока");
+	}
+	
+	CodeGenContext::addCodeLine("#Конец цикла while");
+	CodeGenContext::popContext();
+}
+
+void RepeatStatementContext::generateAsmCode() {
+	CodeGenContext::addCodeLine("#Начало цикла repeat");
+	std::string repeatLabel = CodeGenContext::pushContext("repeat");
+	CodeGenContext::addCodeLine("#Метка начала цикла repeat");
+	CodeGenContext::addCodeLine(repeatLabel + "_beg:");
+	for (StatementContext* statement : statements) {
+		statement->generateAsmCode();
+	}
+	genAsmForInvertedCond(condition, repeatLabel + "_beg");
+	CodeGenContext::addCodeLine("#Конец цикла repeat");
+	CodeGenContext::popContext();
+}
+
+void ForStatementContext::generateAsmCode() {
+	CodeGenContext::addCodeLine("#Начало цикла for");
+	CodeGenContext::addCodeLine("#Начальное выражение цикла");
+	init->generateAsmCode();
+	std::string forLabel = CodeGenContext::pushContext("for");
+	CodeGenContext::addCodeLine("#Метка начала цикла for");
+	CodeGenContext::addCodeLine(forLabel + "_beg:");
+	genAsmForInvertedCond(condition, forLabel + "_end");
+	for (StatementContext* statement : statements) {
+		statement->generateAsmCode();
+	}
+	step->generateAsmCode();
+	CodeGenContext::addCodeLine("#Переходим к началу оператора while");
+	CodeGenContext::addCodeLine("b " + forLabel + "_beg");
+	CodeGenContext::addCodeLine("#Метка конца цикла for");
+	CodeGenContext::addCodeLine(forLabel + "_end:");
+	CodeGenContext::addCodeLine("#Конец цикла for");
+	CodeGenContext::popContext();
+}
+

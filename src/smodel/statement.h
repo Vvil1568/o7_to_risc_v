@@ -115,4 +115,99 @@ public:
 private:
     std::vector<ConditionalStatementsBlock> statementBlocks;
 };
+
+// Класс, определяющий контекст цикличного блока while.
+class WhileStatementsBlock {
+public:
+    // Создание выражения присвоения
+    WhileStatementsBlock() {}
+    void setCondition(ExprContext* condition) {
+        this->condition = condition;
+    }
+    void setStatements(std::vector<StatementContext*> statements) {
+        this->statements = statements;
+    }
+    void generateAsmCode(std::string blockEndLabel, std::string begLabel);
+private:
+    ExprContext* condition = nullptr;
+    std::vector<StatementContext*> statements;
+};
+
+// Класс, определяющий контекст оператора while.
+class WhileStatementContext : public StatementContext {
+public:
+    // Создание выражения присвоения
+    WhileStatementContext(std::vector<WhileStatementsBlock> statementBlocks) {
+        this->statementBlocks = statementBlocks;
+    }
+
+    // Вывод отладочной информации о выражении присвоения
+    virtual void debugOut() {
+        std::cout << "WHILE";
+    }
+    // Информации о типе выражения
+    virtual std::string getType() {
+        return "WHILE";
+    }
+
+    void addLoopBlock(WhileStatementsBlock block) {
+        statementBlocks.push_back(block);
+    }
+
+    virtual void generateAsmCode();
+private:
+    std::vector<WhileStatementsBlock> statementBlocks;
+};
+
+// Класс, определяющий контекст оператора repeat.
+class RepeatStatementContext : public StatementContext {
+public:
+    // Создание выражения присвоения
+    RepeatStatementContext(ExprContext* condition, std::vector<StatementContext*> statements) {
+        this->condition = condition;
+        this->statements = statements;
+    }
+
+    // Вывод отладочной информации о выражении присвоения
+    virtual void debugOut() {
+        std::cout << "REPEAT";
+    }
+    // Информации о типе выражения
+    virtual std::string getType() {
+        return "REPEAT";
+    }
+
+    virtual void generateAsmCode();
+private:
+    ExprContext* condition = nullptr;
+    std::vector<StatementContext*> statements;
+};
+
+// Класс, определяющий контекст оператора for.
+class ForStatementContext : public StatementContext {
+public:
+    // Создание выражения присвоения
+    ForStatementContext(StatementContext* init, ExprContext* condition, StatementContext* step, std::vector<StatementContext*> statements) {
+        this->init = init;
+        this->condition = condition;
+        this->step = step;
+        this->statements = statements;
+    }
+
+    // Вывод отладочной информации о выражении присвоения
+    virtual void debugOut() {
+        std::cout << "FOR";
+    }
+    // Информации о типе выражения
+    virtual std::string getType() {
+        return "FOR";
+    }
+
+    virtual void generateAsmCode();
+private:
+    StatementContext* init = nullptr;
+    ExprContext* condition = nullptr;
+    StatementContext* step = nullptr;
+    std::vector<StatementContext*> statements;
+};
 #endif // STATEMENT_H

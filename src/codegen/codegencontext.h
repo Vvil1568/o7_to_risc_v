@@ -12,6 +12,7 @@ struct ContextStackFrame {
 	int caseCount = 0;
 	int forCount = 0;
 	int whileCount = 0;
+	int repeatCount = 0;
 };
 
 //Контекст кодогенератора
@@ -33,7 +34,7 @@ public:
 		return "literal_str_" + std::to_string(getInstance().strLitCount);
 	}
 	static std::string pushContext(std::string name) {
-		if (name == "if" || name == "case" || name == "for" || name == "while") {
+		if (name == "if" || name == "case" || name == "for" || name == "while" || name == "repeat") {
 			ContextStackFrame top = getInstance().contextStack.back();
 			if (name == "if") {
 				top.ifCount++;
@@ -41,15 +42,19 @@ public:
 			}
 			if (name == "case") {
 				top.caseCount++;
-				name += std::to_string(top.ifCount);
+				name += std::to_string(top.caseCount);
 			}
 			if (name == "for") {
 				top.forCount++;
-				name += std::to_string(top.ifCount);
+				name += std::to_string(top.forCount);
 			}
 			if (name == "while") {
 				top.whileCount++;
-				name += std::to_string(top.ifCount);
+				name += std::to_string(top.whileCount);
+			}
+			if (name == "repeat") {
+				top.repeatCount++;
+				name += std::to_string(top.repeatCount);
 			}
 		}
 		getInstance().contextStack.push_back(ContextStackFrame { name, 0, 0, 0, 0 });

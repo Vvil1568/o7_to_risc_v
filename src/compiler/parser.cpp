@@ -1329,14 +1329,17 @@ std::pair<bool, StatementContext*> ModuleCompiler::isStatement() {
     if(statementCheck.first) {
         return { true, statementCheck.second };
     }
-    if(isWhileStatement()) {
-        return { true, nullptr };
+    statementCheck = isWhileStatement();
+    if(statementCheck.first) {
+        return { true, statementCheck.second };
     }
-    if(isRepeatStatement()) {
-        return { true, nullptr };
+    statementCheck = isRepeatStatement();
+    if(statementCheck.first) {
+        return { true, statementCheck.second };
     }
-    if(isForStatement()) {
-        return { true, nullptr };
+    statementCheck = isForStatement();
+    if(statementCheck.first) {
+        return { true, statementCheck.second };
     }
     ///if(isAssignmentOrProcedureCall()) {
     ///    return true;
@@ -1639,26 +1642,33 @@ _end:
 //-----------------------------------------------------------------------------
 // WhileStatement = WHILE expression DO StatementSequence
 //                 {ELSIF expression DO StatementSequence} END.
-bool ModuleCompiler::isWhileStatement() {
+std::pair<bool, StatementContext*> ModuleCompiler::isWhileStatement() {
+    std::pair<bool, ExprContext*> exprCheckRes;
+    std::pair<bool, std::vector<StatementContext*>> stSeqCheckRes;
+    std::vector<WhileStatementsBlock> blocks;
     //_0:
         if(isKeyWord("WHILE")) {
             goto _1;
         }
-        return false;
+        return { false, nullptr };
     _1:
-        std::pair<bool, ExprContext*> checkRes = isExpression();
-        if (checkRes.first) {
+        exprCheckRes = isExpression();
+        if (exprCheckRes.first) {
             goto _2;
         }
-        return erMessage("Expression expected");
+        return { erMessage("Expression expected"), nullptr };
     _2:
         if(isKeyWord("DO")) {
             goto _3;
         }
-        return erMessage("Key word DO expected");
+        return { erMessage("Key word DO expected"), nullptr };
     _3:
-        std::pair<bool, std::vector<StatementContext*>> stSeqCheckRes = isStatementSequence();
+        stSeqCheckRes = isStatementSequence();
         if (stSeqCheckRes.first) {
+            WhileStatementsBlock block;
+            block.setCondition(exprCheckRes.second);
+            block.setStatements(stSeqCheckRes.second);
+            blocks.push_back(block);
             goto _4;
         }
         if(isKeyWord("ELSIF")) {
@@ -1667,7 +1677,7 @@ bool ModuleCompiler::isWhileStatement() {
         if(isKeyWord("END")) {
             goto _end;
         }
-        return erMessage("Statement Sequence or ELSIF or END expected");
+        return { erMessage("Statement Sequence or ELSIF or END expected"), nullptr };
     _4:
         if(isKeyWord("ELSIF")) {
             goto _1;
@@ -1675,57 +1685,73 @@ bool ModuleCompiler::isWhileStatement() {
         if(isKeyWord("END")) {
             goto _end;
         }
-        return erMessage("ELSIF or END expected");
+        return { erMessage("ELSIF or END expected"), nullptr };
     _end:
-        return true;
+        return { true, creator.CreateWhileStatement(blocks) };
 }
 
 //-----------------------------------------------------------------------------
 // RepeatStatement = REPEAT StatementSequence UNTIL expression.
-bool ModuleCompiler::isRepeatStatement() {
+std::pair<bool, StatementContext*> ModuleCompiler::isRepeatStatement() {
+    std::pair<bool, ExprContext*> exprCheckRes;
+    std::pair<bool, std::vector<StatementContext*>> stSeqCheckRes;
 //_0:
     if(isKeyWord("REPEAT")) {
         goto _1;
     }
-    return false;
+    return { false, nullptr };
 _1:
-    std::pair<bool, std::vector<StatementContext*>> stSeqCheckRes = isStatementSequence();
+    stSeqCheckRes = isStatementSequence();
     if (stSeqCheckRes.first) {
         goto _2;
     }
     if(isKeyWord("UNTIL")) {
         goto _3;
     }
-    return erMessage("Statement Sequence or UNTIL expected");
+    return { erMessage("Statement Sequence or UNTIL expected"), nullptr };
 _2:
     if(isKeyWord("UNTIL")) {
         goto _3;
     }
-    return erMessage("Key word UNTIL expected");
+    return { erMessage("Key word UNTIL expected"), nullptr };
 _3:
-    std::pair<bool, ExprContext*> checkRes = isExpression();
-    if (checkRes.first) {
+    exprCheckRes = isExpression();
+    if (exprCheckRes.first) {
         goto _end;
     }
-    return erMessage("Expression expected");
+    return { erMessage("Expression expected"), nullptr };
 _end:
-    return true;
+    return { true, creator.CreateRepeatStatement(exprCheckRes.second, stSeqCheckRes.second) };
 }
 
 //-----------------------------------------------------------------------------
 // ForStatement = FOR ident ":=" expression TO expression [BY ConstExpression]
 //                DO StatementSequence END.
-bool ModuleCompiler::isForStatement() {
+std::pair<bool, StatementContext*> ModuleCompiler::isForStatement() {
+    VarContext* var = nullptr;
+    StatementContext* init = nullptr;
+    ExprContext* cond = nullptr;
+    int stepVal = 1;
+    StatementContext* step = nullptr;
+    std::pair<bool, ExprContext*> exprCheckRes;
+    std::pair<bool, ConstContext*> constCheckRes;
+    std::pair<bool, std::vector<StatementContext*>> stSeqCheckRes;
 //_0:
     if(isKeyWord("FOR")) {
         goto _1;
     }
-    return false;
+    return { false, nullptr };
 _1:
     if((isIdent())) {
+        if (curModule.GetVarFromName(lexValue) != nullptr) {
+            var = curModule.GetVarFromName(lexValue);
+        }
+        else {
+            return { erMessage("Unknown variable "+lexValue), nullptr };
+        }
         goto _2;
     }
-    return erMessage("Identifier expected");
+    return { erMessage("Identifier expected"), nullptr };
 _2:
     if(moduleStr[pos]==':' && moduleStr[pos+1]=='=') {
         pos += 2;
@@ -1734,24 +1760,26 @@ _2:
         ignore();
         goto _3;
     }
-    return erMessage("':=' expected");
+    return { erMessage("':=' expected"), nullptr };
 _3:
-    std::pair<bool, ExprContext*> checkRes1 = isExpression();
-    if (checkRes1.first) {
+    exprCheckRes = isExpression();
+    if (exprCheckRes.first) {
+        init = creator.CreateAssignmentStatement(var, exprCheckRes.second);
         goto _4;
     }
-    return erMessage("Expression expected");
+    return { erMessage("Expression expected"), nullptr };
 _4:
     if(isKeyWord("TO")) {
         goto _5;
     }
-    return erMessage("Key word TO expected");
+    return { erMessage("Key word TO expected"), nullptr };
 _5:
-    std::pair<bool, ExprContext*> checkRes2 = isExpression();
-    if(checkRes2.first) {
+    exprCheckRes = isExpression();
+    if(exprCheckRes.first) {
+        cond = exprCheckRes.second;
         goto _6;
     }
-    return erMessage("Expression expected");
+    return { erMessage("Expression expected"), nullptr };
 _6:
     if(isKeyWord("BY")) {
         goto _7;
@@ -1759,34 +1787,45 @@ _6:
     if(isKeyWord("DO")) {
         goto _9;
     }
-    return erMessage("Key word BY or DO expected");
+    return { erMessage("Key word BY or DO expected"), nullptr };
 _7:
-    std::pair<bool, ConstContext*> checkRes = isConstExpression();
-    if(checkRes.first) {
+    constCheckRes = isConstExpression();
+    if(constCheckRes.first) {
+        if (constCheckRes.second->getValue()->getType() != "INT") {
+            return { erMessage("FOR step must be integer"), nullptr };
+        }
+        stepVal = (static_cast<ConstIntContext*>(constCheckRes.second->getValue()))->getIntValue();
         goto _8;
     }
-    return erMessage("Constant Expression expected");
+    return { erMessage("Constant Expression expected"), nullptr };
 _8:
     if(isKeyWord("DO")) {
         goto _9;
     }
-    return erMessage("Key word DO expected");
+    return { erMessage("Key word DO expected"), nullptr };
 _9:
-    std::pair<bool, std::vector<StatementContext*>> stSeqCheckRes = isStatementSequence();
+    stSeqCheckRes = isStatementSequence();
     if (stSeqCheckRes.first) {
         goto _10;
     }
     if(isKeyWord("END")) {
         goto _end;
     }
-    return erMessage("Statement Sequence or END expected");
+    return { erMessage("Statement Sequence or END expected"), nullptr };
 _10:
     if(isKeyWord("END")) {
         goto _end;
     }
-    return erMessage("END expected");
+    return { erMessage("END expected"), nullptr };
 _end:
-    return true;
+    step = creator.CreateAssignmentStatement(var, creator.CreateExpr(creator.CreateVarValueExpr(var), creator.CreateIntExpr(stepVal), "+"));
+    if (stepVal > 0) {
+        cond = creator.CreateExpr(creator.CreateVarValueExpr(var), cond, "<");
+    }
+    else {
+        cond = creator.CreateExpr(creator.CreateVarValueExpr(var), cond, ">");
+    }
+    return { true, creator.CreateForStatement(init, cond, step, stSeqCheckRes.second) };
 }
 
 

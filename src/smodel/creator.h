@@ -83,6 +83,9 @@ public:
 
     StatementContext* CreateIfStatement(std::vector<ConditionalStatementsBlock> statementBlocks);
     StatementContext* CreateCaseStatement(std::vector<ConditionalStatementsBlock> statementBlocks);
+    StatementContext* CreateWhileStatement(std::vector<WhileStatementsBlock> statementBlocks);
+    StatementContext* CreateRepeatStatement(ExprContext* condition, std::vector<StatementContext*> statements);
+    StatementContext* CreateForStatement(StatementContext* init, ExprContext* condition, StatementContext* step, std::vector<StatementContext*> statements);
 };
 
 #endif // CREATOR_H

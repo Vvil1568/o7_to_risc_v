@@ -141,3 +141,15 @@ StatementContext* Creator::CreateIfStatement(std::vector<ConditionalStatementsBl
 StatementContext* Creator::CreateCaseStatement(std::vector<ConditionalStatementsBlock> statementBlocks) {
     return new CaseStatementContext(statementBlocks);
 }
+
+StatementContext* Creator::CreateWhileStatement(std::vector<WhileStatementsBlock> statementBlocks) {
+    return new WhileStatementContext(statementBlocks);
+}
+
+StatementContext* Creator::CreateRepeatStatement(ExprContext* condition, std::vector<StatementContext*> statements) {
+    return new RepeatStatementContext(condition, statements);
+}
+
+StatementContext* Creator::CreateForStatement(StatementContext* init, ExprContext* condition, StatementContext* step, std::vector<StatementContext*> statements) {
+    return new ForStatementContext(init, condition, step, statements);
+}
