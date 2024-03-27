@@ -104,9 +104,9 @@ public:
     // ProcedureCall = designator [ActualParameters].
     bool isProcedureCall();
     // IfStatement
-    bool isIfStatement();
+    std::pair<bool, StatementContext*> isIfStatement();
     // CaseStatement
-    bool isCaseStatement();
+    std::pair<bool, StatementContext*> isCaseStatement();
     // WhileStatement
     bool isWhileStatement();
     // RepeatStatement

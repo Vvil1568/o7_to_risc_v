@@ -188,6 +188,13 @@ public:
         return variable->getType()->getTypeName();
     }
     virtual void generateAsmCode();
+
+    virtual Register* getAssignedReg() {
+        if (assignedRegister == nullptr) {
+            assignedRegister = variable->getAssignedReg();
+        }
+        return assignedRegister;
+    }
 private:
     // Переменная
     VarContext* variable;
@@ -258,7 +265,9 @@ public:
     virtual std::string getType() {
         return "EXPR";
     }
-
+    ExprContext* getLeft() { return left; }
+    ExprContext* getRight() { return right; }
+    std::string getOperator() { return operName; }
     virtual void generateAsmCode();
 private:
     // Левый операнд

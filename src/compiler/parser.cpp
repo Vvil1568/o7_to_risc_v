@@ -512,7 +512,7 @@ std::pair<bool, ConstContext*> ModuleCompiler::isConstFactor() {
         goto _end;
     }
     if(isString()) {
-        factor = creator.CreateConstString(lexValue);
+        factor = creator.CreateConstString(lexValue); //TODO check X
         goto _end;
     }
     if (isReal()) {
@@ -1321,11 +1321,13 @@ _end:
 // statement = [assignment | ProcedureCall | IfStatement | CaseStatement |
 //             WhileStatement | RepeatStatement | ForStatement].
 std::pair<bool, StatementContext*> ModuleCompiler::isStatement() {
-    if(isIfStatement()) {
-        return { true, nullptr };
+    std::pair<bool, StatementContext*> statementCheck = isIfStatement();
+    if(statementCheck.first) {
+        return { true, statementCheck.second };
     }
-    if(isCaseStatement()) {
-        return { true, nullptr };
+    statementCheck = isCaseStatement();
+    if(statementCheck.first) {
+        return { true, statementCheck.second };
     }
     if(isWhileStatement()) {
         return { true, nullptr };
@@ -1339,9 +1341,9 @@ std::pair<bool, StatementContext*> ModuleCompiler::isStatement() {
     ///if(isAssignmentOrProcedureCall()) {
     ///    return true;
     ///}
-    std::pair<bool, StatementContext*> asgnCheck = isAssignment();
-    if(asgnCheck.first) {
-        return { true, asgnCheck.second };
+    statementCheck = isAssignment();
+    if(statementCheck.first) {
+        return { true, statementCheck.second };
     }
     if(isProcedureCall()) {
         return { true, nullptr };
@@ -1417,28 +1419,33 @@ _end:
 // IfStatement = IF expression THEN StatementSequence
 //              {ELSIF expression THEN StatementSequence}
 //              [ELSE StatementSequence] END.
-bool ModuleCompiler::isIfStatement() {
+std::pair<bool, StatementContext*> ModuleCompiler::isIfStatement() {
 //_0:isAssignmentOrProcedure
+    std::pair<bool, ExprContext*> exprCheckRes;
     std::pair<bool, std::vector<StatementContext*>> stSeqCheckRes;
-    std::pair<bool, std::vector<StatementContext*>> stSeqCheckRes2;
+    std::vector<ConditionalStatementsBlock> blocks;
     if(isKeyWord("IF")) {
         goto _1;
     }
-    return false;
+    return { false, nullptr };
 _1:
-    std::pair<bool, ExprContext*> checkRes = isExpression();
-    if (checkRes.first) {
+    exprCheckRes = isExpression();
+    if (exprCheckRes.first) {
         goto _2;
     }
-    return erMessage("Expression expected");
+    return {erMessage("Expression expected"), nullptr };
 _2:
     if(isKeyWord("THEN")) {
         goto _3;
     }
-    return erMessage("Key word THEN expected");
+    return {erMessage("Key word THEN expected"), nullptr };
 _3:
     stSeqCheckRes = isStatementSequence();
     if(stSeqCheckRes.first) {
+        ConditionalStatementsBlock block;
+        block.setCondition(exprCheckRes.second);
+        block.setStatements(stSeqCheckRes.second);
+        blocks.push_back(block);
         goto _4;
     }
     if(isKeyWord("ELSIF")) {
@@ -1450,7 +1457,7 @@ _3:
     if(isKeyWord("END")) {
         goto _end;
     }
-    return erMessage("Statement Sequence or ELSIF or ELSE or END expected");
+    return {erMessage("Statement Sequence or ELSIF or ELSE or END expected"), nullptr };
 _4:
     if(isKeyWord("ELSIF")) {
         goto _1;
@@ -1461,23 +1468,26 @@ _4:
     if(isKeyWord("END")) {
         goto _end;
     }
-    return erMessage("ELSIF or ELSE or END expected");
+    return {erMessage("ELSIF or ELSE or END expected"), nullptr };
 _5:
-    stSeqCheckRes2 = isStatementSequence();
-    if (stSeqCheckRes2.first) {
+    stSeqCheckRes = isStatementSequence();
+    if (stSeqCheckRes.first) {
         goto _6;
     }
     if(isKeyWord("END")) {
         goto _end;
     }
-    return erMessage("Statement Sequence or END expected");
+    return {erMessage("Statement Sequence or END expected"), nullptr };
 _6:
     if(isKeyWord("END")) {
+        ConditionalStatementsBlock block;
+        block.setStatements(stSeqCheckRes.second);
+        blocks.push_back(block);
         goto _end;
     }
-    return erMessage("END expected");
+    return {erMessage("END expected"), nullptr };
 _end:
-    return true;
+    return { true , creator.CreateIfStatement(blocks)};
 }
 
 //-----------------------------------------------------------------------------
@@ -1486,35 +1496,65 @@ _end:
 // CaseLabelList = LabelRange {"," LabelRange}.
 // LabelRange = label [".." label].
 // label = integer | string | qualident.
-bool ModuleCompiler::isCaseStatement() {
+std::pair<bool, StatementContext*> ModuleCompiler::isCaseStatement() {
 //_0:
+    std::vector<ConditionalStatementsBlock> blocks;
+    ExprContext* caseCond = nullptr;
+    ExprContext* temp = nullptr;
+    std::pair<bool, ExprContext*> expr1CheckRes;
+    std::pair<bool, std::vector<StatementContext*>> stSeqCheckRes;
     if(isKeyWord("CASE")) {
         goto _1;
     }
-    return false;
+    return { false, nullptr };
 _1:
-    std::pair<bool, ExprContext*> checkRes = isExpression();
-    if (checkRes.first) {
+    expr1CheckRes = isExpression();
+    if (expr1CheckRes.first) {
         goto _2;
     }
-    return erMessage("Expression expected");
+    return {erMessage("Expression expected"), nullptr };
 _2:
     if(isKeyWord("OF")) {
         goto _3;
     }
-    return erMessage("Key word OF expected");
+    return {erMessage("Key word OF expected"), nullptr };
 _3:
+    temp = nullptr;
     if(isInteger()) {
+        int intLexValue;
+        if (lexValue.back() == 'H') {
+            intLexValue = std::stoll(lexValue.substr(0, lexValue.length() - 1).c_str(), 0, 16);
+        }
+        else {
+            intLexValue = std::atoi(lexValue.c_str());
+        }
+        temp = creator.CreateIntExpr(intLexValue);
         goto _4;
     }
     if(isString()) {
+        temp = creator.CreateStringExpr(lexValue);
         goto _4;
     }
     if(isQualident()) {
+        if (curModule.GetConstFromName(lexValue) != nullptr) {
+            temp = creator.CreateConstValueExpr(curModule.GetConstFromName(lexValue));
+        }
+        if (curModule.GetVarFromName(lexValue) != nullptr) {
+            temp = creator.CreateVarValueExpr(curModule.GetVarFromName(lexValue));
+        }
+        if (temp == nullptr) {
+            return {erMessage("Unknown qualident " + lexValue), nullptr };
+        }
         goto _4;
     }
-    return erMessage("Integer or String or Qualified Ident expected");
+    return {erMessage("Integer or String or Qualified Ident expected"), nullptr };
 _4:
+    if (caseCond == nullptr) {
+        caseCond = creator.CreateExpr(expr1CheckRes.second, temp, "=");
+    }
+    else {
+        caseCond = creator.CreateExpr(caseCond, creator.CreateExpr(expr1CheckRes.second, temp, "="), "OR");
+    }
     if(moduleStr[pos]=='.' && moduleStr[pos+1]=='.') {
         pos += 2;
         column += 2;
@@ -1534,7 +1574,7 @@ _4:
         ignore();
         goto _7;
     }
-    return erMessage("'..' or ',' or ':' expected");
+    return {erMessage("'..' or ',' or ':' expected"), nullptr };
 _5:
     if(isInteger()) {
         goto _6;
@@ -1545,7 +1585,7 @@ _5:
     if(isQualident()) {
         goto _6;
     }
-    return erMessage("Integer or String or Qualified Ident expected");
+    return {erMessage("Integer or String or Qualified Ident expected"), nullptr };
 _6:
     if(isSymbol(moduleStr[pos], ',')) {
         ++pos;
@@ -1559,13 +1599,18 @@ _6:
         ignore();
         goto _7;
     }
-    return erMessage("',' or ':' expected");
+    return {erMessage("',' or ':' expected"), nullptr };
 _7:
-    std::pair<bool, std::vector<StatementContext*>> stSeqCheckRes = isStatementSequence();
+    stSeqCheckRes = isStatementSequence();
     if (stSeqCheckRes.first) {
+        ConditionalStatementsBlock block;
+        block.setCondition(caseCond);
+        block.setStatements(stSeqCheckRes.second);
+        blocks.push_back(block);
         goto _8;
     }
     if(isSymbol(moduleStr[pos], '|')) {
+        caseCond = nullptr;
         ++pos;
         ++column;
         ignore();
@@ -1574,9 +1619,10 @@ _7:
     if(isKeyWord("END")) {
         goto _end;
     }
-    return erMessage("Statement Sequence or '|' or END expected");
+    return {erMessage("Statement Sequence or '|' or END expected"), nullptr };
 _8:
     if(isSymbol(moduleStr[pos], '|')) {
+        caseCond = nullptr;
         ++pos;
         ++column;
         ignore();
@@ -1585,9 +1631,9 @@ _8:
     if(isKeyWord("END")) {
         goto _end;
     }
-    return erMessage("'|' or END expected");
+    return {erMessage("'|' or END expected"), nullptr };
 _end:
-    return true;
+    return { true, creator.CreateCaseStatement(blocks) };
 }
 
 //-----------------------------------------------------------------------------
@@ -1858,7 +1904,7 @@ _end:
 // number = integer | real
 std::pair<bool, ExprContext*> ModuleCompiler::isFactor() {
 //_0:
-    ExprContext* factor;
+    ExprContext* factor = nullptr;
     if(isKeyWord("NIL")) {
         factor = creator.CreateNilExpr();
         goto _end;
@@ -1906,8 +1952,16 @@ std::pair<bool, ExprContext*> ModuleCompiler::isFactor() {
         ignore();
         goto _3;
     }
-    if(isDesignator()) {
-        factor = creator.CreateConstValueExpr(curModule.GetConstFromName(lexValue)); //TODO variable use
+    if(isDesignator()) {    
+        if (curModule.GetConstFromName(lexValue) != nullptr) {
+            factor = creator.CreateConstValueExpr(curModule.GetConstFromName(lexValue));
+        }
+        if (curModule.GetVarFromName(lexValue) != nullptr) {
+            factor = creator.CreateVarValueExpr(curModule.GetVarFromName(lexValue));
+        }
+        if (factor == nullptr) {
+            return { erMessage("Unknown designator " + lexValue), nullptr };
+        }
         goto _4;
     }
     return { false,nullptr };

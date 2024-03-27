@@ -80,6 +80,9 @@ public:
     VarContext* CreateVariable(std::string name, TypeContext* type);
 
     StatementContext* CreateAssignmentStatement(VarContext* var, ExprContext* expr);
+
+    StatementContext* CreateIfStatement(std::vector<ConditionalStatementsBlock> statementBlocks);
+    StatementContext* CreateCaseStatement(std::vector<ConditionalStatementsBlock> statementBlocks);
 };
 
 #endif // CREATOR_H

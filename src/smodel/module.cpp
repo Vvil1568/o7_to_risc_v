@@ -53,6 +53,7 @@ VarContext* Module::GetVarFromName(std::string name)
 }
 
 void Module::CompileModule() {
+    CodeGenContext::pushContext(moduleName);
     CodeGenContext::addCodeLine("#Модуль \"" + this->moduleName + "\"");
     CodeGenContext::addCodeLine("module_" + moduleName + ":");
     CodeGenContext::getInstance().codeIndent += "    ";

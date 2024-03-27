@@ -133,3 +133,11 @@ VarContext* Creator::CreateVariable(std::string name, TypeContext* type) {
 StatementContext* Creator::CreateAssignmentStatement(VarContext* var, ExprContext* expr) {
     return new AssignmentStatementContext(var, expr);
 }
+
+StatementContext* Creator::CreateIfStatement(std::vector<ConditionalStatementsBlock> statementBlocks) {
+    return new IfStatementContext(statementBlocks);
+}
+
+StatementContext* Creator::CreateCaseStatement(std::vector<ConditionalStatementsBlock> statementBlocks) {
+    return new CaseStatementContext(statementBlocks);
+}

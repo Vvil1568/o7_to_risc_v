@@ -115,9 +115,11 @@ void ExprNilContext::generateAsmCode() {
 }
 
 void ExprVarContext::generateAsmCode() {
-    CodeGenContext::addCodeLine("# опируем содержимое переменной "+variable->getName() + 
-        ", который был назначен регистр " + variable->getAssignedReg()->getName() + "  в регистр " + getAssignedReg()->getName());
-    CodeGenContext::addCodeLine("mv " + getAssignedReg()->getName() + " " + variable->getAssignedReg()->getName());
+    if (getAssignedReg() != variable->getAssignedReg()) {
+        CodeGenContext::addCodeLine("# опируем содержимое переменной " + variable->getName() +
+            ", который был назначен регистр " + variable->getAssignedReg()->getName() + "  в регистр " + getAssignedReg()->getName());
+        CodeGenContext::addCodeLine("mv " + getAssignedReg()->getName() + " " + variable->getAssignedReg()->getName());
+    }
 }
 
 void ExprConstContext::generateAsmCode() {
@@ -204,7 +206,12 @@ void ExprExprContext::generateAsmCode() {
                 assignedRegister = RegisterPool::getInstance().takeFirstFreeReg(RegType::FT);
             }
             else {
-                assignedRegister = left->getAssignedReg();
+                if (left->getType() != "VAR") {
+                    assignedRegister = left->getAssignedReg();
+                }
+                else {
+                    assignedRegister = right->getAssignedReg();
+                }
             }
         }
     }
@@ -269,26 +276,84 @@ void ExprExprContext::generateAsmCode() {
             CodeGenContext::addCodeLine("div " + getAssignedReg()->getName() + " " + left->getAssignedReg()->getName() + " " + right->getAssignedReg()->getName());
         }
     }
-    /*
-    if (operName == "=" || operName == "#") {
-        if ((left->getResType() != right->getResType())) {
-            return "ERR: " + ("Unsupported operation " + operName + " between different types " + left->getResType() + " and " + right->getResType());
+    if (operName == "=") {
+        CodeGenContext::addCodeLine("#ѕровер€ем равенство содержимого регистров " + left->getAssignedReg()->getName() +
+            " и " + right->getAssignedReg()->getName() + " и кладем результат в регистр " + getAssignedReg()->getName());
+        if (left->getResType() == "REAL") {
+            CodeGenContext::addCodeLine("feq.d " + getAssignedReg()->getName() + " " + left->getAssignedReg()->getName() + " " + right->getAssignedReg()->getName());
         }
-        if (left->getResType() == "REAL" || left->getResType() == "INT" || left->getResType() == "BOOL" || left->getResType() == "STRING") {
-            return "BOOL";
+        else {
+            CodeGenContext::addCodeLine("#ƒл€ этого найдем их разность");
+            CodeGenContext::addCodeLine("sub " + getAssignedReg()->getName() + " " + left->getAssignedReg()->getName() + " " + right->getAssignedReg()->getName());
+            CodeGenContext::addCodeLine("#» проверим ее на равенство нулю");
+            CodeGenContext::addCodeLine("seqz " + getAssignedReg()->getName() + " " + getAssignedReg()->getName());
         }
-        return "ERR: " + ("Unsupported operation " + operName + " between " + left->getType() + "s");
     }
-    if (operName == ">" || operName == "<" || operName == "<=" || operName == ">=") {
-        if ((left->getResType() != right->getResType())) {
-            return "ERR:" + ("Unsupported operation " + operName + " between different types " + left->getResType() + " and " + right->getResType());
+    if (operName == "#") {
+        CodeGenContext::addCodeLine("#ѕровер€ем неравенство содержимого регистров " + left->getAssignedReg()->getName() +
+            " и " + right->getAssignedReg()->getName() + " и кладем результат в регистр " + getAssignedReg()->getName());
+        if (left->getResType() == "REAL") {
+            CodeGenContext::addCodeLine("#ƒл€ этого проверим их на равенство");
+            CodeGenContext::addCodeLine("feq.d " + getAssignedReg()->getName() + " " + left->getAssignedReg()->getName() + " " + right->getAssignedReg()->getName());
+            CodeGenContext::addCodeLine("#ј потом инвертируем результат");
+            CodeGenContext::addCodeLine("not " + getAssignedReg()->getName() + " " + getAssignedReg()->getName());
         }
-        if ((left->getResType() == "REAL") || (left->getResType() == "INT")) {
-            return "BOOL";
+        else {
+            CodeGenContext::addCodeLine("#ƒл€ этого найдем их разность");
+            CodeGenContext::addCodeLine("sub " + getAssignedReg()->getName() + " " + left->getAssignedReg()->getName() + " " + right->getAssignedReg()->getName());
+            CodeGenContext::addCodeLine("#» проверим ее неравенство нулю");
+            CodeGenContext::addCodeLine("snez " + getAssignedReg()->getName() + " " + getAssignedReg()->getName());
         }
-        return "ERR:" + ("Unsupported operation " + operName + " between " + left->getType() + "s");
     }
-    */
+    if (operName == "<") {
+        CodeGenContext::addCodeLine("#ѕровер€ем, что содержимое регистра " + left->getAssignedReg()->getName() +
+            " меньше содержимого регистра " + right->getAssignedReg()->getName() + " и кладем результат в регистр " + getAssignedReg()->getName());
+        if (left->getResType() == "REAL") {
+            CodeGenContext::addCodeLine("flt.d " + getAssignedReg()->getName() + " " + left->getAssignedReg()->getName() + " " + right->getAssignedReg()->getName());
+        }
+        else {
+            CodeGenContext::addCodeLine("slt " + getAssignedReg()->getName() + " " + left->getAssignedReg()->getName() + " " + right->getAssignedReg()->getName());
+        }
+    }
+    if (operName == ">") {
+        CodeGenContext::addCodeLine("#ѕровер€ем, что содержимое регистра " + left->getAssignedReg()->getName() +
+            " больше содержимого регистра " + right->getAssignedReg()->getName() + " и кладем результат в регистр " + getAssignedReg()->getName());
+        if (left->getResType() == "REAL") {
+            CodeGenContext::addCodeLine("fgt.d " + getAssignedReg()->getName() + " " + left->getAssignedReg()->getName() + " " + right->getAssignedReg()->getName());
+        }
+        else {
+            CodeGenContext::addCodeLine("sgt " + getAssignedReg()->getName() + " " + left->getAssignedReg()->getName() + " " + right->getAssignedReg()->getName());
+        }
+    }
+    if (operName == "<=") {
+        CodeGenContext::addCodeLine("#ѕровер€ем, что содержимое регистра " + left->getAssignedReg()->getName() +
+            " меньше или равно содержимого регистра " + right->getAssignedReg()->getName() + " и кладем результат в регистр " + getAssignedReg()->getName());
+        if (left->getResType() == "REAL") {
+            CodeGenContext::addCodeLine("fle.d " + getAssignedReg()->getName() + " " + left->getAssignedReg()->getName() + " " + right->getAssignedReg()->getName());
+        }
+        else {
+            CodeGenContext::addCodeLine("#ƒл€ этого провер€ем, что содержимое регистра " + left->getAssignedReg()->getName() +
+                " больше содержимого регистра " + right->getAssignedReg()->getName());
+            CodeGenContext::addCodeLine("sgt " + getAssignedReg()->getName() + " " + left->getAssignedReg()->getName() + " " + right->getAssignedReg()->getName());
+            CodeGenContext::addCodeLine("#ј потом инвертируем результат");
+            CodeGenContext::addCodeLine("not " + getAssignedReg()->getName() + " " + getAssignedReg()->getName());
+        }
+    }
+
+    if (operName == ">=") {
+        CodeGenContext::addCodeLine("#ѕровер€ем, что содержимое регистра " + left->getAssignedReg()->getName() +
+            " больше или равно содержимого регистра " + right->getAssignedReg()->getName() + " и кладем результат в регистр " + getAssignedReg()->getName());
+        if (left->getResType() == "REAL") {
+            CodeGenContext::addCodeLine("fge.d " + getAssignedReg()->getName() + " " + left->getAssignedReg()->getName() + " " + right->getAssignedReg()->getName());
+        }
+        else {
+            CodeGenContext::addCodeLine("#ƒл€ этого провер€ем, что содержимое регистра " + left->getAssignedReg()->getName() +
+                " меньше содержимого регистра " + right->getAssignedReg()->getName());
+            CodeGenContext::addCodeLine("slt " + getAssignedReg()->getName() + " " + left->getAssignedReg()->getName() + " " + right->getAssignedReg()->getName());
+            CodeGenContext::addCodeLine("#ј потом инвертируем результат");
+            CodeGenContext::addCodeLine("not " + getAssignedReg()->getName() + " " + getAssignedReg()->getName());
+        }
+    }
 
     if (left->getType() != "VAR" && left->getAssignedReg() != assignedRegister) {
         RegisterPool::getInstance().freeRegister(left->getAssignedReg());
