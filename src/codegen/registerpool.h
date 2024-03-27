@@ -16,7 +16,12 @@ public:
 		this->name = name;
 	}
 	bool operator<(const Register& other) const {
-		return (this->name) < (other.name);
+		if (this->name.size() == other.name.size()) {
+			return (this->name) < (other.name);
+		}
+		else {
+			return (this->name).size() < (other.name).size();
+		}
 	}
 	std::string getName() {
 		return name;
