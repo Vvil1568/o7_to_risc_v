@@ -12,6 +12,7 @@
 #include "registerpool.h"
 #include "codegencontext.h"
 #include <algorithm>
+#include "stackcontroller.h"
 
 // Класс, определяющий контекст выражения.
 // Предполагается, что в языке существуют литералы основных типов
@@ -132,7 +133,7 @@ public:
     }
     // Информации о типе контекста
     virtual std::string getType() {
-        return "STRING";
+        return "ARRAY OF CHAR";
     }
     std::string getStrValue() {
         return value;
@@ -194,6 +195,10 @@ public:
             assignedRegister = variable->getAssignedReg();
         }
         return assignedRegister;
+    }
+
+    VarContext* getVariable() {
+        return variable;
     }
 private:
     // Переменная
@@ -304,6 +309,33 @@ private:
     ExprContext* operand;
     // Название оператора
     std::string operName;
+};
+
+class ProcContext;
+
+// Класс, определяющий контекст унарного константного выражения.
+class ExprProcCallContext : public ExprContext {
+public:
+    // Создание константного выражения
+    ExprProcCallContext(ProcContext* proc) {
+        this->proc = proc;
+    }
+    void addActualParam(ExprContext* param) { actualParams.push_back(param); }
+    // Вывод отладочной информации о константном выражении
+    virtual void debugOut();
+    virtual std::string getResType();
+    // Информации о типе контекста
+    virtual std::string getType() {
+        return "EXPR";
+    }
+
+    bool checkParams();
+    virtual void generateAsmCode();
+private:
+    // Процедура
+    ProcContext* proc;
+    // Список аргументов
+    std::vector<ExprContext*> actualParams;
 };
 
 #endif // EXPR_H

@@ -84,6 +84,10 @@ ExprContext* Creator::CreateConstValueExpr(ConstContext* constant) {
 ExprContext* Creator::CreateVarValueExpr(VarContext* variable) {
     return new ExprVarContext(variable);
 }
+// Создание выражения значения переменной
+ExprContext* Creator::CreateProcResExpr(ProcContext* procedure){
+    return new ExprProcCallContext(procedure);
+}
 
 // Создание целочисленного типа
 TypeIntegerContext* Creator::CreateTypeInt() {
@@ -128,6 +132,10 @@ TypePointerContext* Creator::CreateTypePointer(TypeRecordContext* r) {
 // Создание переменной с установкой соответствующего типа
 VarContext* Creator::CreateVariable(std::string name, TypeContext* type) {
     return new VarContext(name, type);
+}
+
+VarContext* Creator::CreateArgVariable(std::string name, TypeContext* type, bool isVar) {
+    return new ArgVarContext(name, type);
 }
 
 StatementContext* Creator::CreateAssignmentStatement(VarContext* var, ExprContext* expr) {

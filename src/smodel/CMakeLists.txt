@@ -16,6 +16,7 @@ set(SOURCE_LIB
     variable.h
     expr.h
     statement.h
+    commondata.h
     
     #sources
     const.cpp
@@ -30,6 +31,7 @@ set(SOURCE_LIB
     variable.cpp
     expr.cpp
     statement.cpp
+    commondata.cpp
 )
 include_directories(${CMAKE_SOURCE_DIR}/src/codegen)
 add_library(smodel STATIC ${SOURCE_LIB} )   # Создание статической библиотеки

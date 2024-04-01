@@ -1,11 +1,14 @@
 #ifndef PROCEDURE_H
 #define PROCEDURE_H
 
-#include "module.h"
+#include "commondata.h"
 #include "variable.h"
+#include "type.h"
+
+class ExprContext;
 
 // Класс, задающий контекст для процедуры
-class ProcContext: public TypeContext, CommonData {
+class ProcContext: public TypeContext, public CommonData {
 public:
     // Конструктор для создания переменной заданного типа
     ProcContext() { typeSize = sizeof(int); } //размер процедуры - размер метки на ее начало
@@ -15,15 +18,30 @@ public:
     // Установка типа переменной
     void setResultType(TypeContext* type) { resultType = type; }
     // Установка имени процедуры
-    void setProcedureName(std::string pn) { moduleName = pn; }
+    void setProcedureName(std::string pn) { name = pn; }
+    // Установка имени процедуры
+    std::string getProcedureName() { return name; }
     // Добавление именованного артефакта
     void AddNamedArtefact(std::string name, Context* context);
-
-
+    // Установка возвращающего выражения процедуры
+    void SetReturnExpr(ExprContext* retExpr) { returnExpr = retExpr; }
+    // Получение списка формальных параметров процедуры
+    std::vector<ArgVarContext*> GetFormalParams();
+    // Вычисление кадра стека
+    void ComputeStackFrame();
+    // Генерация ассемблерного кода
+    void GenerateAsmCode();
     // Вывод отладочной информации о базовом типе
     virtual void debugOut();
+    // Получение размера кадра стека для процедуры
+    int getStackFrameSize() { return stackFrameSize; }
+    // Получение названия метки для процедуры
+    std::string getLabel() { return label; }
 private:
-    TypeContext* resultType;   // Тип результата
+    int stackFrameSize = 0;
+    std::string label = "";
+    ExprContext* returnExpr = nullptr;
+    TypeContext* resultType = nullptr;   // Тип результата
 };
 
 

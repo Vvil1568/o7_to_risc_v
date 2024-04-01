@@ -39,7 +39,7 @@ class ModuleCompiler {
     int oldColumn;     // Номер столбца
     // Создатель элементов семантической модели
     Creator creator;
-    Module curModule;
+    std::vector<CommonData*> curContextStack;
     //Get the qualident type
     TypeContext* getTypeFromQualident(std::string qualident);
 public:
@@ -47,16 +47,23 @@ public:
     ModuleCompiler(const char* str);
     void InitParser(const char* str);
     Module getModule();
-
+    // Получение типа по его названию
+    TypeContext* GetTypeFromName(std::string name);
+    // Получение константы по ее названию
+    ConstContext* GetConstFromName(std::string name);
+    // Получение переменной по ее названию
+    VarContext* GetVarFromName(std::string name);
+    // Получение процедуры по ее названию
+    ProcContext* GetProcFromName(std::string name);
     // Module
     bool isModule();
     
     // ImportList
     bool isImportList();
     // DeclarationSequence
-    bool isDeclarationSequence();
+    bool isDeclarationSequence(CommonData* context);
     // ConstDeclaration
-    bool isConstDeclaration();
+    bool isConstDeclaration(CommonData* context);
     // ConstExpression
     std::pair<bool, ConstContext*> isConstExpression();
     // SimpleConstExpression
@@ -70,7 +77,7 @@ public:
     // ConstElement
     bool isConstElement();
     // TypeDeclaration
-    bool isTypeDeclaration();
+    bool isTypeDeclaration(CommonData* context);
     // type
     std::pair<bool, TypeContext*> isType();
     // ArrayType
@@ -88,13 +95,13 @@ public:
     // FPSection
     bool isFPSection(ProcContext* proc);
     // VariableDeclaration
-    bool isVariableDeclaration();
+    bool isVariableDeclaration(CommonData* context);
     // ProcedureDeclaration
-    bool isProcedureDeclaration();
+    bool isProcedureDeclaration(CommonData* context);
     // ProcedureHeading
-    std::pair<bool, ProcContext*> isProcedureHeading();
+    std::pair<bool, ProcContext*> isProcedureHeading(CommonData* context);
     // ProcedureBody
-    bool isProcedureBody();
+    bool isProcedureBody(ProcContext* context);
     // StatementSequence
     std::pair<bool, std::vector<StatementContext*>> isStatementSequence();
     // statement
@@ -102,7 +109,7 @@ public:
     // assignment = designator ":=" expression.
     std::pair<bool, StatementContext*> isAssignment();
     // ProcedureCall = designator [ActualParameters].
-    bool isProcedureCall();
+    std::pair<bool, StatementContext*> isProcedureCall();
     // IfStatement
     std::pair<bool, StatementContext*> isIfStatement();
     // CaseStatement
@@ -122,11 +129,11 @@ public:
     // factor
     std::pair<bool, ExprContext*> isFactor();
     // designator
-    bool isDesignator();
+    std::pair<bool, std::string> isDesignator();
     // set
     bool isSet();
     // ActualParameters
-    bool isActualParameters();
+    std::pair<bool, std::vector<ExprContext*>> isActualParameters();
 
     //-----------------------------------------------------------------------------
     // Правила, определяющие лексический анализ

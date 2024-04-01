@@ -1,4 +1,5 @@
 #include "expr.h"
+#include "procedure.h"
 
 std::string ExprExprContext::getResType() {
     if (left->getResType().substr(0,3) == "ERR") {
@@ -37,7 +38,7 @@ std::string ExprExprContext::getResType() {
         if ((left->getResType() != right->getResType())) {
             return "ERR: "+("Unsupported operation " + operName + " between different types " + left->getResType() + " and " + right->getResType());
         }
-        if (left->getResType() == "REAL" || left->getResType() == "INT" || left->getResType() == "BOOL" || left->getResType() == "STRING") {
+        if (left->getResType() == "REAL" || left->getResType() == "INT" || left->getResType() == "BOOL" || left->getResType() == "ARRAY OF CHAR") {
             return "BOOL";
         }
         return "ERR: "+("Unsupported operation " + operName + " between " + left->getType() + "s");
@@ -115,9 +116,20 @@ void ExprNilContext::generateAsmCode() {
 }
 
 void ExprVarContext::generateAsmCode() {
-    if (getAssignedReg() != variable->getAssignedReg()) {
+    if (variable->isOnStack()) {
+        if (variable->getType()->getTypeName() == "REAL") {
+            assignedRegister = RegisterPool::getInstance().takeFirstFreeReg(RegType::FT);
+        }
+        else {
+            assignedRegister = RegisterPool::getInstance().takeFirstFreeReg(RegType::T);
+        }
+        int addrOffset = variable->getStackOffset();
+        CodeGenContext::addCodeLine("#Получаем значение переменной " + variable->getName() +
+            " со стека, по адресу sp" + std::to_string(addrOffset) + "  в регистр " + getAssignedReg()->getName());
+        CodeGenContext::addCodeLine("lw " + getAssignedReg()->getName() + " "+ std::to_string(addrOffset)+"(sp)");
+    }else if (getAssignedReg() != variable->getAssignedReg()) {
         CodeGenContext::addCodeLine("#Копируем содержимое переменной " + variable->getName() +
-            ", который был назначен регистр " + variable->getAssignedReg()->getName() + "  в регистр " + getAssignedReg()->getName());
+            ", которой был назначен регистр " + variable->getAssignedReg()->getName() + ",  в регистр " + getAssignedReg()->getName());
         CodeGenContext::addCodeLine("mv " + getAssignedReg()->getName() + " " + variable->getAssignedReg()->getName());
     }
 }
@@ -142,7 +154,7 @@ void ExprConstContext::generateAsmCode() {
         bool val = (static_cast<ConstBooleanContext*>(constant))->getBoolValue();
         typedContext = new ExprBooleanContext(val);
     }
-    if (constant->getType() == "STRING") {
+    if (constant->getType() == "ARRAY OF CHAR") {
         std::string val = (static_cast<ConstStringContext*>(constant))->getStrValue();
         typedContext = new ExprStringContext(val);
     }
@@ -193,7 +205,8 @@ void ExprExprContext::generateAsmCode() {
     left->generateAsmCode();
     right->generateAsmCode();
     if (assignedRegister == nullptr) {
-        if (left->getType() == "VAR" && right->getType() == "VAR") {
+        if ((left->getType() == "VAR" && !static_cast<ExprVarContext*>(left)->getVariable()->isOnStack()) &&
+            right->getType() == "VAR" && !static_cast<ExprVarContext*>(right)->getVariable()->isOnStack()) {
             if (left->getResType() == "REAL" && (operName == "+" || operName == "-" || operName == "*" || operName == "/")) {
                 assignedRegister = RegisterPool::getInstance().takeFirstFreeReg(RegType::FT);
             }
@@ -206,7 +219,7 @@ void ExprExprContext::generateAsmCode() {
                 assignedRegister = RegisterPool::getInstance().takeFirstFreeReg(RegType::FT);
             }
             else {
-                if (left->getType() != "VAR") {
+                if (left->getType() != "VAR" || static_cast<ExprVarContext*>(left)->getVariable()->isOnStack()) {
                     assignedRegister = left->getAssignedReg();
                 }
                 else {
@@ -355,10 +368,45 @@ void ExprExprContext::generateAsmCode() {
         }
     }
 
-    if (left->getType() != "VAR" && left->getAssignedReg() != assignedRegister) {
+    if ((left->getType() != "VAR" || static_cast<ExprVarContext*>(left)->getVariable()->isOnStack()) && left->getAssignedReg() != assignedRegister) {
         RegisterPool::getInstance().freeRegister(left->getAssignedReg());
     }
-    if (right->getType() != "VAR" && right->getAssignedReg() != assignedRegister) {
+    if ((right->getType() != "VAR" || static_cast<ExprVarContext*>(right)->getVariable()->isOnStack()) && right->getAssignedReg() != assignedRegister) {
         RegisterPool::getInstance().freeRegister(right->getAssignedReg());
     }
+}
+
+std::string ExprProcCallContext::getResType() {
+    if (proc->getResultType() == nullptr) return "";
+    return proc->getResultType()->getTypeName();
+}
+
+bool ExprProcCallContext::checkParams() {
+    std::vector<ArgVarContext*> formalParams = proc->GetFormalParams();
+    if (formalParams.size() != actualParams.size()) return false;
+    for (int i = 0; i < formalParams.size();i++) {
+        if (formalParams[i]->getType()->getTypeName() != actualParams[i]->getResType()) {
+            return false;
+        }
+    }
+    return true;
+}
+
+void ExprProcCallContext::generateAsmCode() {
+    std::vector<ArgVarContext*> formalParams = proc->GetFormalParams();
+    if (proc->getStackFrameSize() != 0) {
+        CodeGenContext::addCodeLine("#Выделяем на стеке память для данных процедуры");
+        CodeGenContext::addCodeLine("addi sp sp " + std::to_string(proc->getStackFrameSize()));
+    }
+    for (int i = 0; i < formalParams.size(); i++) {
+        CodeGenContext::addCodeLine("#Загружаем "+std::to_string(i) + "-й аргумент");
+        (new AssignmentStatementContext(formalParams[i], actualParams[i]))->generateAsmCode();
+    }
+    CodeGenContext::addCodeLine("#Заходим в процедуру");
+    CodeGenContext::addCodeLine("jal " + proc->getLabel());
+}
+
+void ExprProcCallContext::debugOut() {
+    std::cout << proc->getProcedureName() + "(...)";
+    std::cout << " )";
 }

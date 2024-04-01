@@ -3,8 +3,9 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <iterator>
 // Начальные установки параметров компилятора и его запуск
-void Compile(const char* str);
+std::vector<std::string> Compile(const char* str);
 
 void to_cout(const std::vector<std::string> &v)
 {
@@ -14,45 +15,52 @@ void to_cout(const std::vector<std::string> &v)
 
 void print_help() {
     std::cout << "Help screen\n";
-    std::cout << "Options:\n";
-    std::cout << "Use --file fileName to specify the file to compile\n";
+    std::cout << "You should specify the path to the compiled file as the first argument\n";
+    std::cout << "And the resulting file path as the second argument\n";
 }
-
+//o7p.exe D:\HSE\oberon7compiler\workspace\o7\big\41.o7 D:\HSE\oberon7compiler\workspace\o7\big\41.s
 int main(int argc, const char *argv[])
 {
-    std::string fileName = "D:\\HSE\\oberon7compiler\\workspace\\o7\\big\\38.o7";
+    std::string inputFileName = "D:\\HSE\\oberon7compiler\\workspace\\o7\\big\\41.o7", outputFileName = "D:\\HSE\\oberon7compiler\\workspace\\o7\\big\\41.s";
+    //std::string fileName = "D:\\HSE\\oberon7compiler\\workspace\\o7\\big\\41.o7";
     /*
-    if (argc != 3 || strcmp(argv[1], "--file")!=0) {
+    if (argc != 3) {
         print_help();
-        return 0;
+        return 1;
     }
     else {
-        fileName = argv[2];
-        std::cout << "file is: " << fileName << "\n";
+        inputFileName = argv[1];
+        outputFileName = argv[2];
+        std::cout << "Input file is: " << inputFileName << "\n";
+        std::cout << "Output file is: " << outputFileName << "\n";
     }
     */
     // После получения имен открытие и чтение файла с модулем
     // с последующей передачей их на обработку.
     // Пока файл с модулем открывается напрямую.
-    //std::string exportName{packageDir + "/export"};
-    //std::string artefactName{packageDir + "/smile/" + entityName};
-    //std::string rigName{packageDir + "/rig/" + entityName};
-    std::string compiledFile{fileName};
+    std::string compiledFile{inputFileName};
     
-    // Компилируемый модуль читается из файла в строку
-    std::ifstream moduleStream(fileName);
+    // Готовим входной поток
+    std::ifstream moduleStream(inputFileName);
     if(moduleStream.fail()) {
-        std::cout << "Module" << fileName << " isn't accesible" << std::endl;
+        std::cout << "Module \"" << inputFileName << "\" isn't accesible" << std::endl;
+        return 1;
+    }
+
+    // Готовим выходной поток
+    std::ofstream outputStream(outputFileName);
+    if (outputStream.fail()) {
+        std::cout << "Resulting file \"" << outputFileName << "\" isn't accesible" << std::endl;
         return 1;
     }
 
     std::stringstream ss;
     ss << (moduleStream.rdbuf());
     std::string o7module(ss.str()); // Модуль Оберона 7
-    /// Тестовый вывод прочитанного артефакта
-    std::cout << o7module << std::endl;
 
-    Compile(o7module.c_str());
-    
+    std::vector<std::string> res = Compile(o7module.c_str());
+    for (std::string resStr : res) {
+        outputStream << resStr << std::endl;
+    }
     return 0;
 }

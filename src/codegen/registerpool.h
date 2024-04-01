@@ -48,6 +48,8 @@ public:
 		static RegisterPool instance;
 		return instance;
 	}
+	static Register* a0;
+	static Register* fa0;
 	//ѕозвол€ет забрать регистр нужного типа из пула регистров
 	Register* takeFirstFreeReg(RegType type);
 	//ѕозвол€ет вернуть регистр в пул регистров

@@ -82,6 +82,7 @@ ConstContext* ConstUnarExprContext::getValue() {
             if (operName == "+") return new ConstRealContext(val);
         }
     }
+    return new ConstErrContext("Unsupported operation " + operName + " for type " + operand->getType());
 }
 
 ConstContext* ConstExprContext::getValue() {

@@ -24,7 +24,7 @@ public:
 	}
 
 	static void addCodeLine(std::string line) {
-		getInstance().code.push_back(getInstance().codeIndent+line);
+		getInstance().code.push_back(getInstance().codeIndent + line);
 	}
 	static void addDataLine(std::string line) {
 		getInstance().data.push_back(getInstance().dataIndent + line);
@@ -57,7 +57,7 @@ public:
 				name += std::to_string(top.repeatCount);
 			}
 		}
-		getInstance().contextStack.push_back(ContextStackFrame { name, 0, 0, 0, 0 });
+		getInstance().contextStack.push_back(ContextStackFrame{ name, 0, 0, 0, 0 });
 		std::string labelName = "";
 		bool first = true;
 		for (auto it = getInstance().contextStack.begin(); it != getInstance().contextStack.end(); it++) {
@@ -72,6 +72,14 @@ public:
 	static void popContext() {
 		getInstance().contextStack.pop_back();
 	}
+	static int pushStack(int size) {
+		int res = getInstance().stackOffset;
+		getInstance().stackOffset -= size;
+		return res;
+	}
+	static void popStack(int size) {
+		getInstance().stackOffset += size;
+	}
 	std::vector<std::string> code;
 	std::vector<std::string> data;
 	std::string dataIndent;
@@ -79,6 +87,7 @@ public:
 private:
 	std::vector<ContextStackFrame> contextStack;
 	int strLitCount = 0;
+	int stackOffset = 0;
 	CodeGenContext();
 };
 

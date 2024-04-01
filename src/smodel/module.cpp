@@ -1,78 +1,55 @@
 #include "module.h"
 
-std::string CommonData::moduleName{""};  // имя модуля
-// Список артефактов с зарезервированными именами
-std::vector<NamedArtefact*> CommonData::reservedNamedArtefacts;
-// Список именованных артефактов, порождаемых в модуле
-std::vector<NamedArtefact*> CommonData::namedArtefacts;
-
 Module::Module()
 {
 
 }
 
-// Добавление именованного артефакта
-void Module::AddNamedArtefact(std::string name, Context* context, bool access) {
-    NamedArtefact* tmpNamed = new NamedArtefact{name, context, access};
-    namedArtefacts.push_back(tmpNamed);
-    // Контекст получает обратную ссылку на именованный артефакт
-    context->setNamedArtefact(tmpNamed);
-}
-
-TypeContext* Module::GetTypeFromName(std::string name)
-{
-    for (NamedArtefact* artefact : namedArtefacts) {
-        if (artefact->getName() != name) continue;
-        if (TypeContext* type = dynamic_cast<TypeContext*>(artefact->getContext())) {
-            return type;
-        }
-    }
-    return nullptr;
-}
-
-ConstContext* Module::GetConstFromName(std::string name)
-{
-    for (NamedArtefact* artefact : namedArtefacts) {
-        if (artefact->getName() != name) continue;
-        if (ConstContext* type = dynamic_cast<ConstContext*>(artefact->getContext())) {
-            return type;
-        }
-    }
-    return nullptr;
-}
-
-VarContext* Module::GetVarFromName(std::string name)
-{
-    for (NamedArtefact* artefact : namedArtefacts) {
-        if (artefact->getName() != name) continue;
-        if (VarContext* type = dynamic_cast<VarContext*>(artefact->getContext())) {
-            return type;
-        }
-    }
-    return nullptr;
-}
 
 void Module::CompileModule() {
-    CodeGenContext::pushContext(moduleName);
-    CodeGenContext::addCodeLine("#Модуль \"" + this->moduleName + "\"");
-    CodeGenContext::addCodeLine("module_" + moduleName + ":");
+    CodeGenContext::pushContext(name);
+    CodeGenContext::addCodeLine("#Модуль \"" + this->name + "\"");
+    for (NamedArtefact* artefact : namedArtefacts) {
+        if (VarContext* var = dynamic_cast<VarContext*>(artefact->getContext())) {
+            Register* reg = var->getAssignedReg();
+            /*
+            if (var->isOnStack()) {
+                int addr = StackController::getInstance().addModuleVariable(var->getName(), var->getType()->getTypeSize());
+                CodeGenContext::addCodeLine("#Переменная \"" + var->getName() + "\" располагается на стеке по адресу " +std::to_string(addr) + " относительно конца стека");
+            }
+            else {
+                CodeGenContext::addCodeLine("#Переменная \"" + var->getName() + "\" располагается в регистре "+reg->getName());
+            }
+            */
+            CodeGenContext::addCodeLine("#Переменная \"" + var->getName() + "\" располагается в регистре " + reg->getName());
+        }
+    }
+    std::vector<ProcContext*> procedures;
+    for (NamedArtefact* artefact : namedArtefacts) {
+        if (ProcContext* procedure = dynamic_cast<ProcContext*>(artefact->getContext())) {
+            procedures.push_back(procedure);
+        }
+    }
+    for (ProcContext* procedure : procedures) {
+        procedure->ComputeStackFrame();
+    }
+    CodeGenContext::addCodeLine("module_" + name + ":");
     CodeGenContext::getInstance().codeIndent += "    ";
     for (StatementContext* statement : GetStatementSequence()) {
         statement->generateAsmCode();
     }
-}
+    CodeGenContext::addCodeLine("#Завершение программы с кодом 0 (системный вызов 10)");
+    CodeGenContext::addCodeLine("li a7 10");
+    CodeGenContext::addCodeLine("ecall");
 
-void CommonData::SetStatementSequence(std::vector<StatementContext*> statements) {
-    this->statements = statements;
-}
-
-std::vector<StatementContext*> CommonData::GetStatementSequence() {
-    return this->statements;
+    for (ProcContext* procedure : procedures) {
+        procedure->GenerateAsmCode();
+    }
 }
 
 // Вывод отладочной информации о модуле
 void Module::debugOut() {
-    std::cout << "Module " << CommonData::moduleName << std::endl;
+    std::cout << "Module " << name << std::endl;
     std::cout << "Reserved artefats: " << std::endl;
     std::cout << "------------------ " << std::endl;
     std::cout << "Artefats: " << std::endl;

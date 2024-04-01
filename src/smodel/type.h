@@ -19,7 +19,7 @@ public:
     virtual std::string getTypeName();
 protected:
     // Размер типа
-    int typeSize;
+    int typeSize = 0;
 };
 
 // Класс, определяющий булевский тип
@@ -136,12 +136,15 @@ public:
     // Создание оболочки типа и задание его контекста
     TypeArrayContext(TypeContext* p, int size) {
         typeSize = p->getTypeSize()*size;
+        this->elementType = p;
     }
 
     // Вывод отладочной информации о массиве
     virtual void debugOut();
     // Вывод названия типа
     virtual std::string getTypeName();
+private:
+    TypeContext* elementType;
 };
 
 #endif // TYPE_H

@@ -107,7 +107,7 @@ std::string TypeSetContext::getTypeName() {
 
 // Вывод названия типа
 std::string TypeArrayContext::getTypeName() {
-    return "ARRAY";
+    return "ARRAY OF " + elementType->getTypeName();
 }
 
 // Вывод названия типа

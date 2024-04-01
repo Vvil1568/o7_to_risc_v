@@ -1,9 +1,18 @@
 #include "statement.h"
 
 void AssignmentStatementContext::generateAsmCode() {
-	Register* reg = var->getAssignedReg();
-	expr->AssignReg(reg);
-	expr->generateAsmCode();
+	if (var != nullptr) {
+		Register* reg = var->getAssignedReg();
+		expr->AssignReg(reg);
+		expr->generateAsmCode();
+		if (var->isOnStack()) {
+			CodeGenContext::addCodeLine("#Уберем значение на стек по адресу sp" + std::to_string(var->getStackOffset()));
+			CodeGenContext::addCodeLine("sw " + expr->getAssignedReg()->getName() + " " + std::to_string(var->getStackOffset()) + "(sp)");
+		}
+	}
+	else {
+		expr->generateAsmCode();
+	}
 }
 
 void genAsmForInvertedCond(ExprContext* condition, std::string label) {
@@ -43,10 +52,10 @@ void genAsmForInvertedCond(ExprContext* condition, std::string label) {
 				if (expr->getOperator() == "<=") {
 					CodeGenContext::addCodeLine("bgt " + expr->getLeft()->getAssignedReg()->getName() + " " + expr->getRight()->getAssignedReg()->getName() + " " + label);
 				}
-				if (expr->getLeft()->getType() != "VAR") {
+				if (expr->getLeft()->getType() != "VAR" || static_cast<ExprVarContext*>(expr->getLeft())->getVariable()->isOnStack()) {
 					RegisterPool::getInstance().freeRegister(expr->getLeft()->getAssignedReg());
 				}
-				if (expr->getRight()->getType() != "VAR") {
+				if (expr->getRight()->getType() != "VAR" || static_cast<ExprVarContext*>(expr->getRight())->getVariable()->isOnStack()) {
 					RegisterPool::getInstance().freeRegister(expr->getRight()->getAssignedReg());
 				}
 			}
@@ -144,7 +153,7 @@ void RepeatStatementContext::generateAsmCode() {
 	CodeGenContext::popContext();
 }
 
-void ForStatementContext::generateAsmCode() {
+void ForStatementContext::generateAsmCode() { 
 	CodeGenContext::addCodeLine("#Начало цикла for");
 	CodeGenContext::addCodeLine("#Начальное выражение цикла");
 	init->generateAsmCode();
@@ -163,4 +172,3 @@ void ForStatementContext::generateAsmCode() {
 	CodeGenContext::addCodeLine("#Конец цикла for");
 	CodeGenContext::popContext();
 }
-

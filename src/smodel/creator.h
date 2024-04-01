@@ -55,7 +55,8 @@ public:
     ExprContext* CreateConstValueExpr(ConstContext* constant);
     // Создание выражения значения переменной
     ExprContext* CreateVarValueExpr(VarContext* variable);
-
+    // Создание выражения значения переменной
+    ExprContext* CreateProcResExpr(ProcContext* procedure);
     // Создание целочисленного типа
     TypeIntegerContext* CreateTypeInt();
     // Создание действительного типа
@@ -78,6 +79,7 @@ public:
 
     // Создание переменной с установкой соответствующего типа
     VarContext* CreateVariable(std::string name, TypeContext* type);
+    VarContext* CreateArgVariable(std::string name, TypeContext* type, bool editable);
 
     StatementContext* CreateAssignmentStatement(VarContext* var, ExprContext* expr);
 
