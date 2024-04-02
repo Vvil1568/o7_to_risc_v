@@ -381,7 +381,7 @@ std::string ExprProcCallContext::getResType() {
     return proc->getResultType()->getTypeName();
 }
 
-bool ExprProcCallContext::checkParams() {
+bool ExprProcCallContext::checkParams() { //TODO - подключить
     std::vector<ArgVarContext*> formalParams = proc->GetFormalParams();
     if (formalParams.size() != actualParams.size()) return false;
     for (int i = 0; i < formalParams.size();i++) {
@@ -393,17 +393,41 @@ bool ExprProcCallContext::checkParams() {
 }
 
 void ExprProcCallContext::generateAsmCode() {
-    std::vector<ArgVarContext*> formalParams = proc->GetFormalParams();
     if (proc->getStackFrameSize() != 0) {
         CodeGenContext::addCodeLine("#Выделяем на стеке память для данных процедуры");
         CodeGenContext::addCodeLine("addi sp sp " + std::to_string(proc->getStackFrameSize()));
     }
+
+    std::vector<ArgVarContext*> formalParams = proc->GetFormalParams();
     for (int i = 0; i < formalParams.size(); i++) {
         CodeGenContext::addCodeLine("#Загружаем "+std::to_string(i) + "-й аргумент");
-        (new AssignmentStatementContext(formalParams[i], actualParams[i]))->generateAsmCode();
+        (new AssignmentStatementContext(formalParams[i], actualParams[i]))->generateAsmCode(); //TODO в ссылочный аргумент - только переменная 
     }
     CodeGenContext::addCodeLine("#Заходим в процедуру");
     CodeGenContext::addCodeLine("jal " + proc->getLabel());
+
+    for (int i = 0; i < formalParams.size(); i++) {
+        if (formalParams[i]->isVar()) {
+            CodeGenContext::addCodeLine("#Параметр \"" + formalParams[i]->getName() + " является ссылочным, поэтому");
+            CodeGenContext::addCodeLine("#Переносим последнее значение регистра параметра в регистр передаваемого аргумента");
+            (new AssignmentStatementContext(dynamic_cast<ExprVarContext*>(actualParams[i])->getVariable(), new ExprVarContext(formalParams[i])))->generateAsmCode();
+        }
+    }
+
+    if (proc->getResultType() != nullptr) {
+        CodeGenContext::addCodeLine("#Переносим значение, возвращенное процедурой в регистр "+getAssignedReg()->getName());
+        if (proc->getResultType()->getTypeName() == "REAL") {
+            CodeGenContext::addCodeLine("fmv.d " + getAssignedReg()->getName() + " fa0");
+        }
+        else {
+            CodeGenContext::addCodeLine("mv " + getAssignedReg()->getName() + " a0");
+        }
+    }
+
+    if (proc->getStackFrameSize() != 0) {
+        CodeGenContext::addCodeLine("#Высвобождаем на стеке память, выделенную для данных функции");
+        CodeGenContext::addCodeLine("addi sp sp " + std::to_string(-proc->getStackFrameSize()));
+    }
 }
 
 void ExprProcCallContext::debugOut() {

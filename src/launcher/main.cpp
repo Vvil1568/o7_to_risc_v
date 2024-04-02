@@ -21,9 +21,9 @@ void print_help() {
 //o7p.exe D:\HSE\oberon7compiler\workspace\o7\big\41.o7 D:\HSE\oberon7compiler\workspace\o7\big\41.s
 int main(int argc, const char *argv[])
 {
-    std::string inputFileName = "D:\\HSE\\oberon7compiler\\workspace\\o7\\big\\41.o7", outputFileName = "D:\\HSE\\oberon7compiler\\workspace\\o7\\big\\41.s";
+    std::string inputFileName = "D:\\HSE\\oberon7compiler\\workspace\\o7\\big\\gcd.o7", outputFileName = "D:\\HSE\\oberon7compiler\\workspace\\o7\\big\\gcd.s";
     //std::string fileName = "D:\\HSE\\oberon7compiler\\workspace\\o7\\big\\41.o7";
-    /*
+    
     if (argc != 3) {
         print_help();
         return 1;
@@ -34,7 +34,7 @@ int main(int argc, const char *argv[])
         std::cout << "Input file is: " << inputFileName << "\n";
         std::cout << "Output file is: " << outputFileName << "\n";
     }
-    */
+    
     // После получения имен открытие и чтение файла с модулем
     // с последующей передачей их на обработку.
     // Пока файл с модулем открывается напрямую.

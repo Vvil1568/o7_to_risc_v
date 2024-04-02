@@ -63,6 +63,7 @@ public:
     }
 
     virtual Register* getAssignedReg() {
+        if (onStack) return nullptr;
         if (assignedRegister == nullptr) {
             if (context->getTypeName() == "REAL") {
                 assignedRegister = RegisterPool::getInstance().takeFirstFreeReg(RegType::FA);

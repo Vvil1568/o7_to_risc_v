@@ -19,6 +19,8 @@ void ProcContext::AddNamedArtefact(std::string name, Context* context) {
 
 // Вычисление кадра стека
 void ProcContext::ComputeStackFrame() {
+    if (isCompute) return;
+    isCompute = true;
     stackFrameSize = 0;
     for (NamedArtefact* artefact : namedArtefacts) {
         if (VarContext* var = dynamic_cast<VarContext*>(artefact->getContext())) {
@@ -28,8 +30,8 @@ void ProcContext::ComputeStackFrame() {
             }
             Register* reg = var->getAssignedReg();
             if (var->isOnStack()) {
-                stackFrameSize += var->getType()->getTypeSize();
                 var->setStackOffset(-stackFrameSize);
+                stackFrameSize += var->getType()->getTypeSize();
             }
         }
     }
@@ -41,13 +43,20 @@ void ProcContext::ComputeStackFrame() {
             }
         }
     }
-    label = CodeGenContext::pushContext(name);
-    CodeGenContext::popContext();
+    if (label == "") {
+        label = CodeGenContext::pushContext(name);
+        CodeGenContext::popContext();
+    }
 }
 
 // Генерация ассемблерного кода
 void ProcContext::GenerateAsmCode() {
-    std::string procLabelName = CodeGenContext::pushContext(name);
+    if (isASMed) return;
+    isASMed = true;
+    bool labelGenerated = label != "";
+    if (!labelGenerated) {
+        label = CodeGenContext::pushContext(name);
+    }
     CodeGenContext::addCodeLine("#Процедура \"" + this->name + "\"");
     for (NamedArtefact* artefact : namedArtefacts) {
         if (VarContext* var = dynamic_cast<VarContext*>(artefact->getContext())) {
@@ -77,34 +86,33 @@ void ProcContext::GenerateAsmCode() {
     for (ProcContext* procedure : procedures) {
         procedure->ComputeStackFrame();
     }
-    CodeGenContext::addCodeLine(procLabelName + ":");
+    CodeGenContext::addCodeLine(label + ":");
     CodeGenContext::getInstance().codeIndent += "    ";
-    CodeGenContext::addCodeLine("#Выделяем на стеке память для данных функции");
-    CodeGenContext::addCodeLine("addi sp sp "+ std::to_string(stackFrameSize));
     for (StatementContext* statement : GetStatementSequence()) {
         statement->generateAsmCode();
     }
 
-    Register* resReg;
-    if (getResultType()->getTypeName() == "REAL") {
-        resReg = RegisterPool::fa0;
-    }
-    else {
-        resReg = RegisterPool::a0;
-    }
-    returnExpr->AssignReg(resReg);
-    returnExpr->generateAsmCode();
-    if (stackFrameSize != 0) {
-        CodeGenContext::addCodeLine("#Высвобождаем на стеке память, выделенную для данных функции");
-        CodeGenContext::addCodeLine("addi sp sp " + std::to_string(-stackFrameSize));
-    }
+    if (getResultType() != nullptr) {
+        Register* resReg;
+        if (getResultType()->getTypeName() == "REAL") {
+            resReg = RegisterPool::fa0;
+        }
+        else {
+            resReg = RegisterPool::a0;
+        }
+        returnExpr->AssignReg(resReg);
+        returnExpr->generateAsmCode();
+    } //TODO тип возвращаемого значения, тип возвращаемого выражения должны совпадать и существовать
     CodeGenContext::addCodeLine("#Выход из подпрограммы");
     CodeGenContext::addCodeLine("ret");
 
     for (ProcContext* procedure : procedures) {
         procedure->GenerateAsmCode();
     }
-    CodeGenContext::popContext();
+    CodeGenContext::getInstance().codeIndent.resize(CodeGenContext::getInstance().codeIndent.size() - 4);
+    if (!labelGenerated) {
+        CodeGenContext::popContext();
+    }
 }
 
 std::vector<ArgVarContext*> ProcContext::GetFormalParams() {

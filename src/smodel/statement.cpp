@@ -8,6 +8,7 @@ void AssignmentStatementContext::generateAsmCode() {
 		if (var->isOnStack()) {
 			CodeGenContext::addCodeLine("#Уберем значение на стек по адресу sp" + std::to_string(var->getStackOffset()));
 			CodeGenContext::addCodeLine("sw " + expr->getAssignedReg()->getName() + " " + std::to_string(var->getStackOffset()) + "(sp)");
+			RegisterPool::getInstance().freeRegister(expr->getAssignedReg());
 		}
 	}
 	else {
@@ -171,4 +172,11 @@ void ForStatementContext::generateAsmCode() {
 	CodeGenContext::addCodeLine(forLabel + "_end:");
 	CodeGenContext::addCodeLine("#Конец цикла for");
 	CodeGenContext::popContext();
+}
+
+void SysCallStatementContext::generateAsmCode() {
+	CodeGenContext::addCodeLine("#Загружаем номер системного вызова в регистр a7");
+	CodeGenContext::addCodeLine("li a7 " + std::to_string(sysCallNum));
+	CodeGenContext::addCodeLine("#Вызываем системный вызов");
+	CodeGenContext::addCodeLine("ecall");
 }

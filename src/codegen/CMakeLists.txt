@@ -6,12 +6,10 @@ set(SOURCE_LIB
     # headers
     registerpool.h
     codegencontext.h
-    stackcontroller.h
 
     #sources
     registerpool.cpp
     codegencontext.cpp
-    stackcontroller.cpp
 )
 
 add_library(codegen STATIC ${SOURCE_LIB} )   # Создание статической библиотеки

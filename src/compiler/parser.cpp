@@ -50,7 +50,7 @@ std::vector<std::string> Compile(const char* str) {
     //std::cout << str << std::endl;
 
     //std::cout << "***** COMPILER STARTED *****" << std::endl;
-    if(mc.isModule()) {
+    if(mc.isModule() && !mc.HasErrors()) {
         std::cout << "OK" << std::endl;
         mc.getModule().CompileModule();
         res = CodeGenContext::getInstance().data;
@@ -144,6 +144,18 @@ _2:
     return erMessage("Semicolon expected");
 _3:
     if(isImportList()) {
+        std::vector<ImportContext*> imports;
+        for (NamedArtefact* artefact : curContextStack[0]->getNamedArtefacts()) {
+            if (ImportContext* imp = dynamic_cast<ImportContext*>(artefact->getContext())) {
+                imports.push_back(imp);
+            }
+        }
+        for (ImportContext* imp : imports) {
+            std::vector<std::pair<std::string, ProcContext*>> procs = STDProcedures::getInstance().getProcsByName(imp->getImportedName());
+            for (std::pair<std::string, ProcContext*> impProc : procs) {
+                curContextStack[0]->AddNamedArtefact(std::regex_replace(impProc.first, std::regex(imp->getImportedName()), imp->getAlias()), impProc.second);
+            }
+        }
         goto _4;
     }
     if(isDeclarationSequence(curModule)) {
@@ -226,6 +238,7 @@ bool ModuleCompiler::isImportList() {
     }
     return false;
 _1:
+    bool aliasUsed = false;
     name = "";
     alias = "";
     if(isIdent()) {
@@ -235,7 +248,12 @@ _1:
     return erMessage("It's not the imported name or alias");
 _2:
     if(isSymbol(moduleStr[pos], ',')) {
-        curContextStack[0]->AddNamedArtefact(alias, creator.CreateImportContext(alias, alias));
+        if (aliasUsed) {
+            curContextStack[0]->AddNamedArtefact(alias, creator.CreateImportContext(name, alias));
+        }
+        else {
+            curContextStack[0]->AddNamedArtefact(alias, creator.CreateImportContext(alias, alias));
+        }
         ++pos;
         ++column;
         ignore();
@@ -248,6 +266,7 @@ _2:
         goto _end;
     }
     if(isAssignSymbol()) {
+        aliasUsed = true;
         goto _3;
     }
     return erMessage("It's not comma or  semicolon the imported name or alias or asignment");
@@ -259,7 +278,12 @@ _3:
     return erMessage("It's not the imported name");
 _4:
     if(isSymbol(moduleStr[pos], ',')) {
-        curContextStack[0]->AddNamedArtefact(alias, creator.CreateImportContext(name, alias));
+        if (aliasUsed) {
+            curContextStack[0]->AddNamedArtefact(alias, creator.CreateImportContext(name, alias));
+        }
+        else {
+            curContextStack[0]->AddNamedArtefact(alias, creator.CreateImportContext(alias, alias));
+        }
         ++pos;
         ++column;
         ignore();
@@ -273,6 +297,12 @@ _4:
     }
     return erMessage("It's not ',' or ';'");
 _end:
+    if (aliasUsed) {
+        curContextStack[0]->AddNamedArtefact(alias, creator.CreateImportContext(name, alias));
+    }
+    else {
+        curContextStack[0]->AddNamedArtefact(alias, creator.CreateImportContext(alias, alias));
+    }
     return true;
 }
 
@@ -2205,7 +2235,7 @@ _4:
     }
     return { erMessage("']' or ',' expected"), "" };
 _5:
-    if(isQualident()) {
+    if(isQualident() && getTypeFromQualident(lexValue)!=nullptr) {
         goto _6;
     }
     // Возможна процедура без параметров. Поэтому откат на анализ
@@ -2917,6 +2947,7 @@ bool ModuleCompiler::isEndOfString() {
 
 // Выдача сообщения об ошибке
 bool ModuleCompiler::erMessage(std::string&& str) {
+    hasErrors = true;
     // Вывод сообщения об ошибке
     std::cout << "ERROR ("
               << line << ", "

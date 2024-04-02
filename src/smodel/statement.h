@@ -210,4 +210,26 @@ private:
     StatementContext* step = nullptr;
     std::vector<StatementContext*> statements;
 };
+
+// Класс, определяющий контекст системного вызова.
+class SysCallStatementContext : public StatementContext {
+public:
+    // Создание выражения присвоения
+    SysCallStatementContext(int sysCallNum) {
+        this->sysCallNum = sysCallNum;
+    }
+
+    // Вывод отладочной информации о выражении присвоения
+    virtual void debugOut() {
+        std::cout << "SysCall";
+    }
+    // Информации о типе выражения
+    virtual std::string getType() {
+        return "SysCall";
+    }
+
+    virtual void generateAsmCode();
+private:
+    int sysCallNum;
+};
 #endif // STATEMENT_H

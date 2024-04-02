@@ -37,7 +37,11 @@ public:
     int getStackFrameSize() { return stackFrameSize; }
     // Получение названия метки для процедуры
     std::string getLabel() { return label; }
+    // Получение названия метки для процедуры
+    void setLabel(std::string labelName) { label = labelName; }
 private:
+    bool isCompute = false;
+    bool isASMed = false;
     int stackFrameSize = 0;
     std::string label = "";
     ExprContext* returnExpr = nullptr;

@@ -135,7 +135,7 @@ VarContext* Creator::CreateVariable(std::string name, TypeContext* type) {
 }
 
 VarContext* Creator::CreateArgVariable(std::string name, TypeContext* type, bool isVar) {
-    return new ArgVarContext(name, type);
+    return new ArgVarContext(name, type, isVar);
 }
 
 StatementContext* Creator::CreateAssignmentStatement(VarContext* var, ExprContext* expr) {
@@ -160,4 +160,8 @@ StatementContext* Creator::CreateRepeatStatement(ExprContext* condition, std::ve
 
 StatementContext* Creator::CreateForStatement(StatementContext* init, ExprContext* condition, StatementContext* step, std::vector<StatementContext*> statements) {
     return new ForStatementContext(init, condition, step, statements);
+}
+
+StatementContext* Creator::CreateSysCallStatement(int sysCallId) {
+    return new SysCallStatementContext(sysCallId);
 }

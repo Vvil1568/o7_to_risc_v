@@ -6,6 +6,7 @@
 #include <vector>
 #include <utility>
 #include <cctype>
+#include <regex>
 #include "creator.h"
 #include "registerpool.h"
 
@@ -42,6 +43,8 @@ class ModuleCompiler {
     std::vector<CommonData*> curContextStack;
     //Get the qualident type
     TypeContext* getTypeFromQualident(std::string qualident);
+
+    bool hasErrors = false;
 public:
     // Конструктор, формирующий начальные установки параметров компилятора
     ModuleCompiler(const char* str);
@@ -55,6 +58,8 @@ public:
     VarContext* GetVarFromName(std::string name);
     // Получение процедуры по ее названию
     ProcContext* GetProcFromName(std::string name);
+
+    bool HasErrors() { return hasErrors; }
     // Module
     bool isModule();
     

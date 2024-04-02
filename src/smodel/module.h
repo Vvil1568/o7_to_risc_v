@@ -12,8 +12,9 @@
 #include "registerpool.h"
 #include "codegencontext.h"
 #include "procedure.h"
-#include "stackcontroller.h"
+#include "import.h"
 #include "commondata.h"
+#include "stdprocedures.h"
 
 // Класс, определяющий модуль семантической модели.
 // Содержит все данные, описывающие артефакты языка программирования

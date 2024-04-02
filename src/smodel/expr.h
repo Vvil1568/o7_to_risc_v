@@ -12,7 +12,6 @@
 #include "registerpool.h"
 #include "codegencontext.h"
 #include <algorithm>
-#include "stackcontroller.h"
 
 // Класс, определяющий контекст выражения.
 // Предполагается, что в языке существуют литералы основных типов
