@@ -1,10 +1,12 @@
 #include "codegencontext.h"
 
 CodeGenContext::CodeGenContext() {
-	code.push_back("#Секция кода");
+	if(enableComments)
+		code.push_back("#Code segment");
 	code.push_back(".text");
 	codeIndent = "    ";
-	data.push_back("#Секция данных");
+	if (enableComments)
+		data.push_back("#Data segment");
 	data.push_back(".data");
 	dataIndent = "    ";
 }

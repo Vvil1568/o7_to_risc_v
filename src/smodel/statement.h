@@ -232,4 +232,26 @@ public:
 private:
     int sysCallNum;
 };
+
+// Класс, определяющий контекст ручного выражения.
+class ManualStatementContext : public StatementContext {
+public:
+    // Создание выражения присвоения
+    ManualStatementContext(std::vector<std::string> asmCode) {
+        this->asmCode = asmCode;
+    }
+
+    // Вывод отладочной информации о выражении присвоения
+    virtual void debugOut() {
+        std::cout << "MANUAL";
+    }
+    // Информации о типе выражения
+    virtual std::string getType() {
+        return "MANUAL";
+    }
+
+    virtual void generateAsmCode();
+private:
+    std::vector<std::string> asmCode;
+};
 #endif // STATEMENT_H

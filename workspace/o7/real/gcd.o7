@@ -1,0 +1,35 @@
+MODULE DemoGCD;
+
+IMPORT In, Out;
+
+VAR
+  a : INTEGER;
+  b : INTEGER;
+  res : INTEGER;
+
+(* Euclidean Algorithm *)
+PROCEDURE GCD(a: INTEGER; b: INTEGER): INTEGER;
+BEGIN
+ WHILE (a#0) & (b#0) DO
+    IF a > b THEN
+        a := a MOD b;
+    ELSE
+        b := b MOD a;
+    END;
+  END;
+  RETURN a + b
+END GCD; 
+
+BEGIN
+  Out.WriteStr("Enter à: ");
+  In.ReadInt(a);
+  Out.WriteStr("Enter b: ");
+  In.ReadInt(b);
+  IF (a > 0) & (b>0) THEN
+    res := GCD(a,b);
+    Out.WriteStr("The greatest common divisor of à and b is equal to ");
+    Out.WriteInt(res);
+  ELSE
+    Out.WriteStr("a and b must be positive!");
+  END;
+END DemoGCD.

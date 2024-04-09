@@ -5,7 +5,7 @@
 #include <sstream>
 #include <iterator>
 // Начальные установки параметров компилятора и его запуск
-std::vector<std::string> Compile(const char* str);
+std::vector<std::string> Compile(const char* str, bool silent, bool fulldata);
 
 void to_cout(const std::vector<std::string> &v)
 {
@@ -17,14 +17,16 @@ void print_help() {
     std::cout << "Help screen\n";
     std::cout << "You should specify the path to the compiled file as the first argument\n";
     std::cout << "And the resulting file path as the second argument\n";
+    std::cout << "You can add \"silent\" argument to disable the comments\n";
+    std::cout << "You can add \"fulldata\" argument to move all module-level variables to data segment\n";
 }
 //o7p.exe D:\HSE\oberon7compiler\workspace\o7\big\41.o7 D:\HSE\oberon7compiler\workspace\o7\big\41.s
 int main(int argc, const char *argv[])
 {
-    std::string inputFileName = "D:\\HSE\\oberon7compiler\\workspace\\o7\\big\\gcd.o7", outputFileName = "D:\\HSE\\oberon7compiler\\workspace\\o7\\big\\gcd.s";
-    //std::string fileName = "D:\\HSE\\oberon7compiler\\workspace\\o7\\big\\41.o7";
-    
-    if (argc != 3) {
+    std::string inputFileName = "", outputFileName = "";
+    bool silent = false;
+    bool fulldata = false;
+    if (argc < 3) {
         print_help();
         return 1;
     }
@@ -33,6 +35,14 @@ int main(int argc, const char *argv[])
         outputFileName = argv[2];
         std::cout << "Input file is: " << inputFileName << "\n";
         std::cout << "Output file is: " << outputFileName << "\n";
+        for (int i = 3; i < argc; i++) {
+            if (strcmp(argv[i], "silent") == 0) {
+                silent = true;
+            }
+            if (strcmp(argv[i], "fulldata") == 0) {
+                fulldata = true;
+            }
+        }
     }
     
     // После получения имен открытие и чтение файла с модулем
@@ -52,13 +62,13 @@ int main(int argc, const char *argv[])
     if (outputStream.fail()) {
         std::cout << "Resulting file \"" << outputFileName << "\" isn't accesible" << std::endl;
         return 1;
-    }
+     }
 
     std::stringstream ss;
     ss << (moduleStream.rdbuf());
     std::string o7module(ss.str()); // Модуль Оберона 7
 
-    std::vector<std::string> res = Compile(o7module.c_str());
+    std::vector<std::string> res = Compile(o7module.c_str(), silent, fulldata);
     for (std::string resStr : res) {
         outputStream << resStr << std::endl;
     }

@@ -1,0 +1,12 @@
+MODULE TestSysCalls;
+  IMPORT Out, In;
+  VAR a, b : INTEGER;
+
+BEGIN 
+  Out.WriteStr("Enter a: ");
+  In.ReadInt(a);
+  Out.WriteStr("Enter b: ");
+  In.ReadInt(b);
+  Out.WriteStr("a+b: ");
+  Out.WriteInt(a + b);
+END TestSysCalls.

@@ -1,0 +1,21 @@
+MODULE TestManyVars;
+
+VAR
+  a1 : INTEGER;
+  a2 : INTEGER;
+  a3 : INTEGER;
+  a4 : INTEGER;
+  a5 : INTEGER;
+  a6 : INTEGER;
+  a7 : INTEGER;
+  a8 : INTEGER;
+  a9 : INTEGER;
+  a10 : INTEGER;
+  a11 : INTEGER;
+  a12 : INTEGER;
+  a13 : INTEGER;
+  a14 : INTEGER;
+  a15 : INTEGER;
+BEGIN
+  
+END TestManyVars.

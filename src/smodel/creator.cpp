@@ -165,3 +165,11 @@ StatementContext* Creator::CreateForStatement(StatementContext* init, ExprContex
 StatementContext* Creator::CreateSysCallStatement(int sysCallId) {
     return new SysCallStatementContext(sysCallId);
 }
+
+StatementContext* Creator::CreateManualStatement(std::string line) {
+    return new ManualStatementContext({line});
+}
+
+StatementContext* Creator::CreateManualStatement(std::vector<std::string> lines) {
+    return new ManualStatementContext(lines);
+}

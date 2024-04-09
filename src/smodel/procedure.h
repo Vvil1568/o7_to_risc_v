@@ -39,11 +39,14 @@ public:
     std::string getLabel() { return label; }
     // Получение названия метки для процедуры
     void setLabel(std::string labelName) { label = labelName; }
+
+    void setResReg(Register* reg) { resReg = reg; }
 private:
     bool isCompute = false;
     bool isASMed = false;
     int stackFrameSize = 0;
     std::string label = "";
+    Register* resReg = nullptr;
     ExprContext* returnExpr = nullptr;
     TypeContext* resultType = nullptr;   // Тип результата
 };

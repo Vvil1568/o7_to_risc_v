@@ -21,6 +21,7 @@
 class Module: public CommonData {
     friend class Creator;
 public:
+    static bool putModuleVarsIntoData;
     Module();
 
     // Установка имени модуля

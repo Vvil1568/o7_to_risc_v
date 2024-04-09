@@ -11,6 +11,7 @@
 #include "const.h"
 #include "registerpool.h"
 #include "codegencontext.h"
+#include "designator.h"
 #include <algorithm>
 
 //  ласс, определ€ющий контекст выражени€.
@@ -33,6 +34,10 @@ public:
     }
     virtual void AssignReg(Register* reg) {
         assignedRegister = reg;
+    }
+    virtual void FreeReg() {
+        RegisterPool::getInstance().freeRegister(getAssignedReg());
+        assignedRegister = nullptr;
     }
     virtual void generateAsmCode() = 0;
 
@@ -189,6 +194,14 @@ public:
     }
     virtual void generateAsmCode();
 
+    virtual void FreeReg() {
+        if (variable->isInMemory()) {
+            RegisterPool::getInstance().freeRegister(getAssignedReg());
+            assignedRegister = nullptr;
+            variable->ClearReg();
+        }
+    }
+
     virtual Register* getAssignedReg() {
         if (assignedRegister == nullptr) {
             assignedRegister = variable->getAssignedReg();
@@ -325,9 +338,9 @@ public:
     virtual std::string getResType();
     // »нформации о типе контекста
     virtual std::string getType() {
-        return "EXPR";
+        return "PROC";
     }
-
+    virtual Register* getAssignedReg();
     bool checkParams();
     virtual void generateAsmCode();
 private:

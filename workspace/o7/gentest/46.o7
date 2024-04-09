@@ -1,0 +1,12 @@
+MODULE TestRecord;
+TYPE
+  User = RECORD 
+      age: INTEGER; 
+      salary: REAL 
+  END;
+VAR 
+  user : User;
+BEGIN 
+  user.age := 25;
+  user.salary := 123.45;
+END TestArr.

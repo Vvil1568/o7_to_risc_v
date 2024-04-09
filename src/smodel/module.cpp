@@ -1,27 +1,29 @@
 #include "module.h"
 
+bool Module::putModuleVarsIntoData = false;
+
 Module::Module()
 {
 
 }
 
-
 void Module::CompileModule() {
     CodeGenContext::pushContext(name);
-    CodeGenContext::addCodeLine("#Модуль \"" + this->name + "\"");
+    CodeGenContext::addCodeComment("Module \"" + this->name + "\"");
+    CodeGenContext::addDataComment("\"" + this->name + "\"" + " module data");
     for (NamedArtefact* artefact : namedArtefacts) {
         if (VarContext* var = dynamic_cast<VarContext*>(artefact->getContext())) {
-            Register* reg = var->getAssignedReg();
-            /*
-            if (var->isOnStack()) {
-                int addr = StackController::getInstance().addModuleVariable(var->getName(), var->getType()->getTypeSize());
-                CodeGenContext::addCodeLine("#Переменная \"" + var->getName() + "\" располагается на стеке по адресу " +std::to_string(addr) + " относительно конца стека");
+            if (Module::putModuleVarsIntoData || RegisterPool::getInstance().getRegCount(RegType::S) == 0 || var->getType()->getTypeName() == "RECORD" || (var->getType()->getTypeName().size() >= 5 && var->getType()->getTypeName().substr(0, 5) == "ARRAY")) {
+                std::string label = CodeGenContext::getLabelName(var->getName());
+                var->setOnData(label);
+                CodeGenContext::addDataComment("Space for the "+ var->getName() + " variable:");
+                CodeGenContext::addDataLine(label+": .space "+std::to_string(var->getType()->getTypeSize()));
+                CodeGenContext::addCodeComment("Variable \"" + var->getName() + "\" is placed in the data segment and is marked with the " + label +" label");
             }
             else {
-                CodeGenContext::addCodeLine("#Переменная \"" + var->getName() + "\" располагается в регистре "+reg->getName());
+                Register* reg = var->getAssignedReg();
+                CodeGenContext::addCodeComment("Variable \"" + var->getName() + "\" is placed in " + reg->getName()+" register");
             }
-            */
-            CodeGenContext::addCodeLine("#Переменная \"" + var->getName() + "\" располагается в регистре " + reg->getName());
         }
     }
     std::vector<ProcContext*> procedures;
@@ -38,7 +40,7 @@ void Module::CompileModule() {
     for (StatementContext* statement : GetStatementSequence()) {
         statement->generateAsmCode();
     }
-    CodeGenContext::addCodeLine("#Завершение программы с кодом 0 (системный вызов 10)");
+    CodeGenContext::addCodeComment("Finishing the program with 0 return code (system call 10)");
     CodeGenContext::addCodeLine("li a7 10");
     CodeGenContext::addCodeLine("ecall");
 

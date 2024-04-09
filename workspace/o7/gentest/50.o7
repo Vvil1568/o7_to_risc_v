@@ -1,0 +1,20 @@
+MODULE DemoFloatingPoint;
+
+IMPORT In, Out;
+
+VAR
+  a, b : REAL;
+
+BEGIN
+  Out.WriteStr("¬ведите a: ");
+  In.ReadReal(a);
+  Out.WriteStr("¬ведите b: ");
+  In.ReadReal(b);
+  IF a < b THEN
+    Out.WriteStr("a<b");
+  ELSIF a > b THEN
+    Out.WriteStr("a>b");
+  ELSE
+    Out.WriteStr("a=b");
+  END
+END DemoFloatingPoint.

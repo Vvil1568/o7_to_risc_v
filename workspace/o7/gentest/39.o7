@@ -1,0 +1,7 @@
+MODULE TestStr;
+
+VAR
+  s : ARRAY 100 OF CHAR;
+BEGIN
+  s := "Hello, World!"
+END TestStr.

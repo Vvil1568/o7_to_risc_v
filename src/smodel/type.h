@@ -107,6 +107,38 @@ public:
     virtual void debugOut();
     // Вывод названия типа
     virtual std::string getTypeName();
+
+    int getFieldOffset(std::string name) {
+        if (parentContext != nullptr) {
+            int offset = parentContext->getFieldOffset(name);
+            if (offset != -1) {
+                return offset;
+            }
+        }
+        int offset = 0;
+        for (NamedArtefact artefact : namedFields) {
+            if (artefact.getName() == name) {
+                return offset;
+            }
+            offset += static_cast<TypeContext*>(artefact.getContext())->getTypeSize();
+        }
+        return -1;
+    }
+
+    TypeContext* getFieldType(std::string name) {
+        if (parentContext != nullptr) {
+            TypeContext* type = parentContext->getFieldType(name);
+            if (type!=nullptr) {
+                return type;
+            }
+        }
+        for (NamedArtefact artefact : namedFields) {
+            if (artefact.getName() == name) {
+                return static_cast<TypeContext*>(artefact.getContext());
+            }
+        }
+        return nullptr;
+    }
 private:
     // Родительский контекст (если присутствует, иначе nullptr)
     TypeRecordContext* parentContext;
@@ -126,6 +158,8 @@ public:
     virtual void debugOut();
     // Вывод названия типа
     virtual std::string getTypeName();
+
+    TypeContext* getPointedType() { return recordType; }
 private:
     TypeRecordContext* recordType;    // указатель ссылается только на запись
 };
@@ -143,6 +177,8 @@ public:
     virtual void debugOut();
     // Вывод названия типа
     virtual std::string getTypeName();
+
+    TypeContext* getElemType() { return elementType; }
 private:
     TypeContext* elementType;
 };

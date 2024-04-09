@@ -42,7 +42,7 @@ namespace {
 }
 
 // Начальные установки параметров компилятора и его запуск
-std::vector<std::string> Compile(const char* str) {
+std::vector<std::string> Compile(const char* str, bool silent, bool fulldata) {
     ModuleCompiler mc(str);
     std::vector<std::string> res;
     
@@ -52,6 +52,8 @@ std::vector<std::string> Compile(const char* str) {
     //std::cout << "***** COMPILER STARTED *****" << std::endl;
     if(mc.isModule() && !mc.HasErrors()) {
         std::cout << "OK" << std::endl;
+        CodeGenContext::getInstance().enableComments = !silent;
+        Module::putModuleVarsIntoData = fulldata;
         mc.getModule().CompileModule();
         res = CodeGenContext::getInstance().data;
         std::vector<std::string> asmCode = CodeGenContext::getInstance().code;
@@ -576,7 +578,7 @@ std::pair<bool, ConstContext*> ModuleCompiler::isConstFactor() {
     std::pair<bool, ConstContext*> checkRes1;
     std::pair<bool, ConstContext*> checkRes2;
     std::pair<bool, std::vector<ExprContext*>> actualParamsCheckRes;
-    std::pair<bool, std::string> designCheckRes;
+    std::pair<bool, Context*> designCheckRes;
     if(isKeyWord("NIL")) {
         factor = creator.CreateConstNil();
         goto _end;
@@ -626,7 +628,12 @@ std::pair<bool, ConstContext*> ModuleCompiler::isConstFactor() {
     }
     designCheckRes = isDesignator();
     if (designCheckRes.first) {
-        factor = GetConstFromName(designCheckRes.second);
+        if (dynamic_cast<ConstContext*>(designCheckRes.second) != nullptr) {
+            factor = static_cast<ConstContext*>(designCheckRes.second);
+        }
+        else {
+            return { erMessage("Designator must point to a constant expression"), nullptr };
+        }
         goto _4;
     }
     return { false, nullptr };
@@ -1365,6 +1372,9 @@ _5:
     }
     return erMessage("END expected");
 _end:
+    if (context->getResultType()!=nullptr && (exprCheckRes.second == nullptr || exprCheckRes.second->getResType() != context->getResultType()->getTypeName())) {
+        return erMessage("Procedure "+context->getProcedureName()+" must return "+context->getResultType()->getTypeName());
+    }
     return true;
 }
 
@@ -1454,14 +1464,21 @@ std::pair<bool, StatementContext*> ModuleCompiler::isStatement() {
 std::pair<bool, StatementContext*> ModuleCompiler::isAssignment() {
     Location l;
     storeLocation(l);
-    std::pair<bool, std::string> designCheckRes;
+    std::pair<bool, Context*> designCheckRes;
+    std::pair<bool, ExprContext*> exprCheckRes;
+    VarContext* var;
     /// Тестовая точка входа в правило
     ///std::cout << "----> isAssignment" << std::endl;
 //_0:
-    std::string varName;
     designCheckRes = isDesignator();
     if (designCheckRes.first) {
-        varName = designCheckRes.second;
+        if (dynamic_cast<VarContext*>(designCheckRes.second) != nullptr) {
+            var = static_cast<VarContext*>(designCheckRes.second);
+        }
+        else {
+            restoreLocation(l);
+            return { false, nullptr };
+        }
         goto _1;
     }
     restoreLocation(l);
@@ -1479,15 +1496,10 @@ _1:
     return { false, nullptr };
     // return erMessage("':=' expected");
 _2:
-    VarContext* var;
-    var = GetVarFromName(varName);
-    if (var == nullptr) {
-        return { erMessage("Incorrect variable name: "+varName) , nullptr};
-    }
-    std::pair<bool, ExprContext*> checkRes = isExpression();
-    if (checkRes.first) {
-        if (var->getType()->getTypeName() != checkRes.second->getResType()) {
-            return { erMessage("Incorrect variable assignment: Can't assign " + checkRes.second->getResType() + " to " + var->getType()->getTypeName()) , nullptr};
+    exprCheckRes = isExpression();
+    if (exprCheckRes.first) {
+        if (var->getType()->getTypeName() != exprCheckRes.second->getResType()) {
+            return { erMessage("Incorrect variable assignment: Can't assign " + exprCheckRes.second->getResType() + " to " + var->getType()->getTypeName()) , nullptr};
         }
         goto _end;
     }
@@ -1495,7 +1507,7 @@ _2:
 _end:
     /// Тестовая точка выхода из правила
     ///std::cout << "isAssignmentOrProcedure ---->" << std::endl;
-    return { true, creator.CreateAssignmentStatement(var, checkRes.second)};
+    return { true, creator.CreateAssignmentStatement(var, exprCheckRes.second)};
 }
 
 //-----------------------------------------------------------------------------
@@ -1504,17 +1516,12 @@ std::pair<bool, StatementContext*> ModuleCompiler::isProcedureCall() {
 //_0:
     ExprContext* procedure = nullptr;
     std::pair<bool, std::vector<ExprContext*>> actualParamsCheckRes;
-    std::pair<bool, std::string> designCheckRes;
+    std::pair<bool, Context*> designCheckRes;
     designCheckRes = isDesignator();
-    if (designCheckRes.first) {
-        if (GetProcFromName(designCheckRes.second) != nullptr) {
-            procedure = creator.CreateProcResExpr(GetProcFromName(designCheckRes.second));
-        }
-        if (procedure == nullptr) {
-            return { erMessage("Unknown designator " + designCheckRes.second), nullptr };
-        }
+    if (designCheckRes.first && dynamic_cast<ProcContext*>(designCheckRes.second) != nullptr) {
+        procedure = creator.CreateProcResExpr(static_cast<ProcContext*>(designCheckRes.second));
         goto _1;
-     }
+    }
     return { false, nullptr };
 _1:
     actualParamsCheckRes = isActualParameters();
@@ -1526,6 +1533,9 @@ _1:
     }
     goto _end;
 _end:
+    if (!dynamic_cast<ExprProcCallContext*>(procedure)->checkParams()) {
+        return { erMessage("Invalid actual parameters for the procedure"), nullptr };
+    }
     return { true, creator.CreateAssignmentStatement(0, procedure) };
 }
 
@@ -2063,7 +2073,7 @@ std::pair<bool, ExprContext*> ModuleCompiler::isFactor() {
     std::pair<bool, std::vector<ExprContext*>> actualParamsCheckRes;
     std::pair<bool, ExprContext*> checkRes1;
     std::pair<bool, ExprContext*> checkRes2;
-    std::pair<bool, std::string> designCheckRes;
+    std::pair<bool, Context*> designCheckRes;
     if(isKeyWord("NIL")) {
         factor = creator.CreateNilExpr();
         goto _end;
@@ -2113,18 +2123,15 @@ std::pair<bool, ExprContext*> ModuleCompiler::isFactor() {
     }
     designCheckRes = isDesignator();
     if(designCheckRes.first) {    
-        if (GetConstFromName(designCheckRes.second) != nullptr) {
-            factor = creator.CreateConstValueExpr(GetConstFromName(designCheckRes.second));
+        if (dynamic_cast<ConstContext*>(designCheckRes.second) != nullptr) {
+            factor = creator.CreateConstValueExpr(static_cast<ConstContext*>(designCheckRes.second));
         }
-        if (GetVarFromName(designCheckRes.second) != nullptr) {
-            factor = creator.CreateVarValueExpr(GetVarFromName(designCheckRes.second));
+        if (dynamic_cast<VarContext*>(designCheckRes.second) != nullptr) {
+            factor = creator.CreateVarValueExpr(static_cast<VarContext*>(designCheckRes.second));
         }
-        if (GetProcFromName(designCheckRes.second) != nullptr) {
-            factor = creator.CreateProcResExpr(GetProcFromName(designCheckRes.second));
+        if (dynamic_cast<ProcContext*>(designCheckRes.second) != nullptr) {
+            factor = creator.CreateProcResExpr(static_cast<ProcContext*>(designCheckRes.second));
             isProc = true;
-        }
-        if (factor == nullptr) {
-            return { erMessage("Unknown designator " + designCheckRes.second), nullptr };
         }
         goto _4;
     }
@@ -2156,6 +2163,9 @@ _4:
         for (ExprContext* param : actualParamsCheckRes.second) {
             dynamic_cast<ExprProcCallContext*>(factor)->addActualParam(param);
         }
+        if (!dynamic_cast<ExprProcCallContext*>(factor)->checkParams()) {
+            return { erMessage("Invalid actual parameters for the procedure"), nullptr };
+        }
         goto _end;
     }
     goto _end;
@@ -2166,30 +2176,69 @@ _end:
 //-----------------------------------------------------------------------------
 // designator = qualident {selector}.
 // selector = "." ident | "[" ExpList "]" | "^" | "(" qualident ")".
-std::pair<bool, std::string> ModuleCompiler::isDesignator() {
-    std::string resDesign = "";
+std::pair<bool, Context*> ModuleCompiler::isDesignator() {
+    Context* resContext;
+    VarContext* varContext=nullptr;
     Location l;
     std::pair<bool, ExprContext*> checkRes;
+    bool copied = false;
 //_0:
     if(isQualident()) {
-        resDesign = lexValue;
+        if (GetVarFromName(lexValue) != nullptr) {
+            varContext = GetVarFromName(lexValue);
+            resContext = varContext;
+        }
+        else if (GetConstFromName(lexValue) != nullptr) {
+            resContext = GetConstFromName(lexValue);
+        }
+        else if (GetProcFromName(lexValue) != nullptr) {
+            resContext = GetProcFromName(lexValue);
+        }
+        else {
+            return { erMessage("Unknown qualident "+lexValue), nullptr };
+        }
         goto _1;
     }
-    return { false, "" };
+    return { false, nullptr };
 _1:
     if(isSymbol(moduleStr[pos], '.')) {
+        if (varContext == nullptr) {
+            return { erMessage("Can not get a field from nonvariable context"), nullptr };
+        }
+        if (!copied) {
+            varContext = varContext->Copy();
+            resContext = varContext;
+            copied = true;
+        }
         ++pos;
         ++column;
         ignore();
         goto _2;
     }
     if(isSymbol(moduleStr[pos], '[')) {
+        if (varContext == nullptr) {
+            return { erMessage("Can not index a nonvariable context"), nullptr };
+        }
+        if (!copied) {
+            varContext = varContext->Copy();
+            resContext = varContext;
+            copied = true;
+        }
         ++pos;
         ++column;
         ignore();
         goto _3;
     }
     if(isSymbol(moduleStr[pos], '^')) {
+        if (varContext == nullptr) {
+            return { erMessage("Can not dereference a nonvariable context"), nullptr };
+        }
+        if (!copied) {
+            varContext = varContext->Copy();
+            resContext = varContext;
+            copied = true;
+        }
+        varContext->addDesignatorAction(new PointerDerefDesignActionContext());
         ++pos;
         ++column;
         ignore();
@@ -2210,16 +2259,17 @@ _1:
     goto _end;
 _2:
     if(isIdent()) {
-        resDesign += "." + lexValue;
+        varContext->addDesignatorAction(new FieldGetDesignActionContext(lexValue));
         goto _1;
     }
-    return { erMessage("'.' expected"), "" };
+    return { erMessage("'.' expected"), nullptr };
 _3:
     checkRes = isExpression();
     if (checkRes.first) {
+        varContext->addDesignatorAction(new IndexDesignActionContext(checkRes.second));
         goto _4;
     }
-    return { erMessage("ExpList expected"), "" };
+    return { erMessage("ExpList expected"), nullptr };
 _4:
     if(isSymbol(moduleStr[pos], ']')) {
         ++pos;
@@ -2233,7 +2283,7 @@ _4:
         ignore();
         goto _3;
     }
-    return { erMessage("']' or ',' expected"), "" };
+    return { erMessage("']' or ',' expected"), nullptr };
 _5:
     if(isQualident() && getTypeFromQualident(lexValue)!=nullptr) {
         goto _6;
@@ -2261,7 +2311,7 @@ _6:
     goto _end;
     ///return erMessage("')' expected");
 _end:
-    return { true, resDesign };
+    return { true, resContext };
 }
 
 //-----------------------------------------------------------------------------
@@ -2463,6 +2513,9 @@ bool ModuleCompiler::isQualident() {
     // Проверка на первый идентификатор
     if(isId()) {
         tmpValue = lexValue;
+        if (GetConstFromName(tmpValue) != nullptr || GetVarFromName(tmpValue) != nullptr || GetTypeFromName(tmpValue) != nullptr || GetProcFromName(tmpValue) != nullptr) {
+            goto _end;
+        }
         goto _1;
     }
     return false;

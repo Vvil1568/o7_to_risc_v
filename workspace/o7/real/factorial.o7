@@ -1,0 +1,30 @@
+MODULE DemoFact;
+
+IMPORT In, Out;
+
+VAR
+  n : INTEGER;
+  res : INTEGER;
+
+(* Recursive factorial calculation *)
+PROCEDURE FACT(n: INTEGER): INTEGER;
+BEGIN
+  IF n > 1 THEN
+    n:=n*FACT(n-1);
+  END;
+  RETURN n
+END GCD; 
+
+BEGIN
+  Out.WriteStr("Enter n: ");
+  In.ReadInt(n);
+  IF (n > 0) & (n<13) THEN
+    res := FACT(n);
+    Out.WriteStr("n! = ");
+    Out.WriteInt(res);
+  ELSIF n >= 13 THEN
+    Out.WriteStr("Calculation of n! results in overflow!");
+  ELSE
+    Out.WriteStr("n must be positive!");
+  END;
+END DemoFact.

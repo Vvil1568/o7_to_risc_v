@@ -134,7 +134,7 @@ public:
     // factor
     std::pair<bool, ExprContext*> isFactor();
     // designator
-    std::pair<bool, std::string> isDesignator();
+    std::pair<bool, Context*> isDesignator();
     // set
     bool isSet();
     // ActualParameters

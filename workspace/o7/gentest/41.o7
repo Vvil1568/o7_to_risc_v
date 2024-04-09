@@ -1,0 +1,26 @@
+MODULE TestGCD;
+
+VAR
+  in1 : INTEGER;
+  in2 : INTEGER;
+  nod : INTEGER;
+
+(* Алгоритм Евклида *)
+PROCEDURE GCD(a: INTEGER; b: INTEGER): INTEGER;
+BEGIN
+ WHILE (a#0) & (b#0) DO
+    IF a > b THEN
+        a := a MOD b;
+    ELSE
+        b := b MOD a;
+    END
+  END;
+  RETURN a + b
+END GCD; 
+
+BEGIN
+  in1 := 18;
+  in2 := 30;
+ 
+  nod := GCD(in1, in2);
+END TestGCD.

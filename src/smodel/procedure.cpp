@@ -28,54 +28,56 @@ void ProcContext::ComputeStackFrame() {
             if (dynamic_cast<ArgVarContext*>(artefact->getContext()) == nullptr) {
                 var->setOnStack();
             }
-            Register* reg = var->getAssignedReg();
-            if (var->isOnStack()) {
-                var->setStackOffset(-stackFrameSize);
+            else {
+                var->getAssignedReg();
+            }
+            if (var->isInMemory()) {
+                var->setMemoryOffset(stackFrameSize);
                 stackFrameSize += var->getType()->getTypeSize();
             }
         }
     }
     for (NamedArtefact* artefact : namedArtefacts) {
         if (VarContext* var = dynamic_cast<VarContext*>(artefact->getContext())) {
-            Register* reg = var->getAssignedReg();
-            if (!var->isOnStack()) {
-                RegisterPool::getInstance().freeRegister(reg);
+            if (!var->isInMemory()) {
+                RegisterPool::getInstance().freeRegister(var->getAssignedReg());
             }
         }
     }
     if (label == "") {
-        label = CodeGenContext::pushContext(name);
-        CodeGenContext::popContext();
+        label = CodeGenContext::getLabelName(name);
     }
 }
 
 // Генерация ассемблерного кода
 void ProcContext::GenerateAsmCode() {
     if (isASMed) return;
+    CodeGenContext::getInstance().isInProc = true;
     isASMed = true;
     bool labelGenerated = label != "";
     if (!labelGenerated) {
         label = CodeGenContext::pushContext(name);
     }
-    CodeGenContext::addCodeLine("#Процедура \"" + this->name + "\"");
+    CodeGenContext::addCodeComment("Procedure \"" + this->name + "\"");
     for (NamedArtefact* artefact : namedArtefacts) {
         if (VarContext* var = dynamic_cast<VarContext*>(artefact->getContext())) {
-            Register* reg = var->getAssignedReg();
-            if (var->isOnStack()) {
-                CodeGenContext::addCodeLine("#Переменная \"" + var->getName() + "\" располагается на стеке по адресу sp" + std::to_string(var->getStackOffset()));
+            if (var->isInMemory()) {
+                CodeGenContext::addCodeComment("Variable \"" + var->getName() + "\" is placed on the stack with the address sp+" + std::to_string(var->getMemoryOffset()));
             }
             else {
-                CodeGenContext::addCodeLine("#Переменная \"" + var->getName() + "\" располагается в регистре " + reg->getName());
+                Register* reg = var->getAssignedReg();
+                CodeGenContext::addCodeComment("Variable \"" + var->getName() + "\" is placed in " + reg->getName() +" register");
             }
         }
     }
     if (resultType != nullptr) {
-        if (resultType->getTypeName() == "REAL") {
-            CodeGenContext::addCodeLine("#Возвращаемое значение будет располагаться в регистре fa0");
+        if (getResultType()->getTypeName() == "REAL") {
+            resReg = RegisterPool::fa1;
         }
         else {
-            CodeGenContext::addCodeLine("#Возвращаемое значение будет располагаться в регистре a0");
+            resReg = RegisterPool::a1;
         }
+        CodeGenContext::addCodeComment("Return value will be placed in " + resReg->getName() +" register");
     }
     std::vector<ProcContext*> procedures;
     for (NamedArtefact* artefact : namedArtefacts) {
@@ -93,17 +95,10 @@ void ProcContext::GenerateAsmCode() {
     }
 
     if (getResultType() != nullptr) {
-        Register* resReg;
-        if (getResultType()->getTypeName() == "REAL") {
-            resReg = RegisterPool::fa0;
-        }
-        else {
-            resReg = RegisterPool::a0;
-        }
         returnExpr->AssignReg(resReg);
         returnExpr->generateAsmCode();
-    } //TODO тип возвращаемого значения, тип возвращаемого выражения должны совпадать и существовать
-    CodeGenContext::addCodeLine("#Выход из подпрограммы");
+    }
+    CodeGenContext::addCodeComment("Return from the subroutine");
     CodeGenContext::addCodeLine("ret");
 
     for (ProcContext* procedure : procedures) {
@@ -113,6 +108,7 @@ void ProcContext::GenerateAsmCode() {
     if (!labelGenerated) {
         CodeGenContext::popContext();
     }
+    CodeGenContext::getInstance().isInProc = false;
 }
 
 std::vector<ArgVarContext*> ProcContext::GetFormalParams() {

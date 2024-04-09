@@ -1,0 +1,28 @@
+MODULE DemoArr;
+
+IMPORT In, Out;
+CONST 
+  MAXSIZE = 100;
+VAR
+  arr : ARRAY MAXSIZE OF INTEGER;
+  i, n : INTEGER;
+  res : INTEGER;
+
+BEGIN
+  Out.WriteStr("Enter the array size (from 0 to 100): ");
+  In.ReadInt(n);
+  IF (n >= 0) & (n <= 100) THEN
+    FOR i:=0 TO n BY 1 DO
+      Out.WriteStr("Enter a number: ");
+      In.ReadInt(arr[i]);
+    END;
+    res := 0;
+    FOR i:=0 TO n BY 1 DO
+      res := res + arr[i];
+    END;   
+    Out.WriteStr("Summ of the numbers entered: ");
+    Out.WriteInt(res);
+  ELSE
+    Out.WriteStr("Array size must be between 0 and 100!");
+  END;
+END DemoArr.

@@ -89,6 +89,8 @@ public:
     StatementContext* CreateRepeatStatement(ExprContext* condition, std::vector<StatementContext*> statements);
     StatementContext* CreateForStatement(StatementContext* init, ExprContext* condition, StatementContext* step, std::vector<StatementContext*> statements);
     StatementContext* CreateSysCallStatement(int sysCallId);
+    StatementContext* CreateManualStatement(std::string);
+    StatementContext* CreateManualStatement(std::vector<std::string>);
 };
 
 #endif // CREATOR_H

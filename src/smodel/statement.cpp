@@ -5,10 +5,16 @@ void AssignmentStatementContext::generateAsmCode() {
 		Register* reg = var->getAssignedReg();
 		expr->AssignReg(reg);
 		expr->generateAsmCode();
-		if (var->isOnStack()) {
-			CodeGenContext::addCodeLine("#Уберем значение на стек по адресу sp" + std::to_string(var->getStackOffset()));
-			CodeGenContext::addCodeLine("sw " + expr->getAssignedReg()->getName() + " " + std::to_string(var->getStackOffset()) + "(sp)");
-			RegisterPool::getInstance().freeRegister(expr->getAssignedReg());
+		if (var->isInMemory()) {
+			var->AssignReg(expr->getAssignedReg());
+			var->saveToMemory();
+			expr->FreeReg();
+			var->ClearReg();
+		}
+		else {
+			if (dynamic_cast<ExprVarContext*>(expr) != nullptr && dynamic_cast<ExprVarContext*>(expr)->getVariable()->isInMemory()) {
+				dynamic_cast<ExprVarContext*>(expr)->getVariable()->ClearReg();
+			}
 		}
 	}
 	else {
@@ -18,7 +24,7 @@ void AssignmentStatementContext::generateAsmCode() {
 
 void genAsmForInvertedCond(ExprContext* condition, std::string label) {
 	if (condition != nullptr) {
-		CodeGenContext::addCodeLine("#Если условие неверно - переходим по метке " + label);
+		CodeGenContext::addCodeComment("If the condition is not true, jump to the label " + label);
 		if (dynamic_cast<ExprExprContext*>(condition) == nullptr) {
 			condition->generateAsmCode();
 			CodeGenContext::addCodeLine("beqz " + condition->getAssignedReg()->getName() + " " + label);
@@ -28,9 +34,7 @@ void genAsmForInvertedCond(ExprContext* condition, std::string label) {
 			if (expr->getLeft()->getResType() == "REAL" || expr->getOperator() == "OR" || expr->getOperator() == "&") {
 				condition->generateAsmCode();
 				CodeGenContext::addCodeLine("beqz " + condition->getAssignedReg()->getName() + " " + label);
-				if (condition->getType() != "VAR") {
-					RegisterPool::getInstance().freeRegister(condition->getAssignedReg());
-				}
+				condition->FreeReg();
 			}
 			else {
 				expr->getLeft()->generateAsmCode();
@@ -53,11 +57,11 @@ void genAsmForInvertedCond(ExprContext* condition, std::string label) {
 				if (expr->getOperator() == "<=") {
 					CodeGenContext::addCodeLine("bgt " + expr->getLeft()->getAssignedReg()->getName() + " " + expr->getRight()->getAssignedReg()->getName() + " " + label);
 				}
-				if (expr->getLeft()->getType() != "VAR" || static_cast<ExprVarContext*>(expr->getLeft())->getVariable()->isOnStack()) {
-					RegisterPool::getInstance().freeRegister(expr->getLeft()->getAssignedReg());
+				if (expr->getLeft()->getType() != "VAR" || static_cast<ExprVarContext*>(expr->getLeft())->getVariable()->isInMemory()) {
+					expr->getLeft()->FreeReg();
 				}
-				if (expr->getRight()->getType() != "VAR" || static_cast<ExprVarContext*>(expr->getRight())->getVariable()->isOnStack()) {
-					RegisterPool::getInstance().freeRegister(expr->getRight()->getAssignedReg());
+				if (expr->getRight()->getType() != "VAR" || static_cast<ExprVarContext*>(expr->getRight())->getVariable()->isInMemory()) {
+					expr->getRight()->FreeReg();
 				}
 			}
 		}
@@ -69,45 +73,45 @@ void ConditionalStatementsBlock::generateAsmCode(std::string blockEndLabel, std:
 	for (StatementContext* statement : statements) {
 		statement->generateAsmCode();
 	}
-	CodeGenContext::addCodeLine("#Переходим к концу условия");
+	CodeGenContext::addCodeComment("Jump to the end of the if statement");
 	CodeGenContext::addCodeLine("b " + endLabel);
-	CodeGenContext::addCodeLine("#Метка конца условного блока");
+	CodeGenContext::addCodeComment("If block end label");
 	CodeGenContext::addCodeLine(blockEndLabel+":");
 }
 
 void IfStatementContext::generateAsmCode() {
-	CodeGenContext::addCodeLine("#Начало условия");
+	CodeGenContext::addCodeComment("IF statement beginning");
 	std::string ifLabel = CodeGenContext::pushContext("if");
 	int i = 0;
 	for (ConditionalStatementsBlock statement : statementBlocks) {
 		i++;
-		CodeGenContext::addCodeLine("#Начало "+std::to_string(i)+"-го условного блока");
+		CodeGenContext::addCodeComment("Beginning of the if block number "+std::to_string(i));
 		CodeGenContext::getInstance().codeIndent += "    ";
 		statement.generateAsmCode(ifLabel+"_block"+std::to_string(i), ifLabel + "_end");
 		CodeGenContext::getInstance().codeIndent.resize(CodeGenContext::getInstance().codeIndent.size() - 4);
-		CodeGenContext::addCodeLine("#Конец " + std::to_string(i) + "-го условного блока");
+		CodeGenContext::addCodeComment("Ending of the if block number " + std::to_string(i));
 	}
-	CodeGenContext::addCodeLine("#Метка конца условия");
+	CodeGenContext::addCodeComment("If statement ending label");
 	CodeGenContext::addCodeLine(ifLabel + "_end:");
-	CodeGenContext::addCodeLine("#Конец условия");
+	CodeGenContext::addCodeComment("IF statement ending");
 	CodeGenContext::popContext();
 }
 
 void CaseStatementContext::generateAsmCode() {
-	CodeGenContext::addCodeLine("#Начало оператора case");
+	CodeGenContext::addCodeComment("Case statement beginning");
 	std::string caseLabel = CodeGenContext::pushContext("case");
 	int i = 0;
 	for (ConditionalStatementsBlock statement : statementBlocks) {
 		i++;
-		CodeGenContext::addCodeLine("#Начало " + std::to_string(i) + "-го case-блока");
+		CodeGenContext::addCodeComment("Beginning of the case block number " + std::to_string(i));
 		CodeGenContext::getInstance().codeIndent += "    ";
 		statement.generateAsmCode(caseLabel + "_block" + std::to_string(i), caseLabel + "_end");
 		CodeGenContext::getInstance().codeIndent.resize(CodeGenContext::getInstance().codeIndent.size() - 4);
-		CodeGenContext::addCodeLine("#Конец " + std::to_string(i) + "-го case-блока");
+		CodeGenContext::addCodeComment("Ending of the case block number  " + std::to_string(i));
 	}
-	CodeGenContext::addCodeLine("#Метка конца оператора case");
+	CodeGenContext::addCodeComment("Case statement ending label");
 	CodeGenContext::addCodeLine(caseLabel + "_end:");
-	CodeGenContext::addCodeLine("#Конец оператора case");
+	CodeGenContext::addCodeComment("Case statement ending");
 	CodeGenContext::popContext();
 }
 
@@ -116,67 +120,74 @@ void WhileStatementsBlock::generateAsmCode(std::string blockEndLabel, std::strin
 	for (StatementContext* statement : statements) {
 		statement->generateAsmCode();
 	}
-	CodeGenContext::addCodeLine("#Переходим к началу оператора while");
+	CodeGenContext::addCodeComment("Jump to the beginning of the while statement");
 	CodeGenContext::addCodeLine("b " + begLabel);
-	CodeGenContext::addCodeLine("#Метка конца while-блока");
+	CodeGenContext::addCodeComment("While block end label");
 	CodeGenContext::addCodeLine(blockEndLabel + ":");
 }
 
 void WhileStatementContext::generateAsmCode() {
-	CodeGenContext::addCodeLine("#Начало цикла while");
+	CodeGenContext::addCodeComment("While statement beginning");
 	std::string whileLabel = CodeGenContext::pushContext("while");
-	CodeGenContext::addCodeLine("#Метка начала цикла while");
+	CodeGenContext::addCodeComment("While statement beginning label");
 	CodeGenContext::addCodeLine(whileLabel + "_beg:");
 	int i = 0;
 	for (WhileStatementsBlock statement : statementBlocks) {
 		i++;
-		CodeGenContext::addCodeLine("#Начало " + std::to_string(i) + "-го while-блока");
+		CodeGenContext::addCodeComment("Beginning of the while block number " + std::to_string(i));
 		CodeGenContext::getInstance().codeIndent += "    ";
 		statement.generateAsmCode(whileLabel + "_block" + std::to_string(i), whileLabel + "_beg");
 		CodeGenContext::getInstance().codeIndent.resize(CodeGenContext::getInstance().codeIndent.size() - 4);
-		CodeGenContext::addCodeLine("#Конец " + std::to_string(i) + "-го while-блока");
+		CodeGenContext::addCodeComment("Ending of the while block number " + std::to_string(i));
 	}
 	
-	CodeGenContext::addCodeLine("#Конец цикла while");
+	CodeGenContext::addCodeComment("While statement ending");
 	CodeGenContext::popContext();
 }
 
 void RepeatStatementContext::generateAsmCode() {
-	CodeGenContext::addCodeLine("#Начало цикла repeat");
+	CodeGenContext::addCodeComment("Repeat statement beginning");
 	std::string repeatLabel = CodeGenContext::pushContext("repeat");
-	CodeGenContext::addCodeLine("#Метка начала цикла repeat");
+	CodeGenContext::addCodeComment("Repeat statement beginning label");
 	CodeGenContext::addCodeLine(repeatLabel + "_beg:");
 	for (StatementContext* statement : statements) {
 		statement->generateAsmCode();
 	}
 	genAsmForInvertedCond(condition, repeatLabel + "_beg");
-	CodeGenContext::addCodeLine("#Конец цикла repeat");
+	CodeGenContext::addCodeComment("Repeat statement ending");
 	CodeGenContext::popContext();
 }
 
 void ForStatementContext::generateAsmCode() { 
-	CodeGenContext::addCodeLine("#Начало цикла for");
-	CodeGenContext::addCodeLine("#Начальное выражение цикла");
+	CodeGenContext::addCodeComment("For statement beginning");
+	CodeGenContext::addCodeComment("Loop initial statement");
 	init->generateAsmCode();
 	std::string forLabel = CodeGenContext::pushContext("for");
-	CodeGenContext::addCodeLine("#Метка начала цикла for");
+	CodeGenContext::addCodeComment("For statement beginning label");
 	CodeGenContext::addCodeLine(forLabel + "_beg:");
 	genAsmForInvertedCond(condition, forLabel + "_end");
 	for (StatementContext* statement : statements) {
 		statement->generateAsmCode();
 	}
 	step->generateAsmCode();
-	CodeGenContext::addCodeLine("#Переходим к началу оператора while");
+	CodeGenContext::addCodeComment("Jumping to the beginning of the for statement");
 	CodeGenContext::addCodeLine("b " + forLabel + "_beg");
-	CodeGenContext::addCodeLine("#Метка конца цикла for");
+	CodeGenContext::addCodeComment("For statement ending label");
 	CodeGenContext::addCodeLine(forLabel + "_end:");
-	CodeGenContext::addCodeLine("#Конец цикла for");
+	CodeGenContext::addCodeComment("For statement ending");
 	CodeGenContext::popContext();
 }
 
 void SysCallStatementContext::generateAsmCode() {
-	CodeGenContext::addCodeLine("#Загружаем номер системного вызова в регистр a7");
+	CodeGenContext::addCodeComment("Loading the system call number into a7 register");
 	CodeGenContext::addCodeLine("li a7 " + std::to_string(sysCallNum));
-	CodeGenContext::addCodeLine("#Вызываем системный вызов");
+	CodeGenContext::addCodeComment("Invoking the system call");
 	CodeGenContext::addCodeLine("ecall");
 }
+
+void ManualStatementContext::generateAsmCode() {
+	for (std::string asmLine : asmCode) {
+		CodeGenContext::addCodeLine(asmLine);
+	}
+}
+

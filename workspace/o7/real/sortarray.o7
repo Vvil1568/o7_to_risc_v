@@ -1,0 +1,36 @@
+MODULE DemoSort;
+
+IMPORT In, Out;
+CONST 
+  MAXSIZE = 100;
+VAR
+  arr : ARRAY MAXSIZE OF INTEGER;
+  i,j, temp, n : INTEGER;
+
+BEGIN
+  Out.WriteStr("Enter the array size (from 0 to 100): ");
+  In.ReadInt(n);
+  IF (n >= 0) & (n <= 100) THEN
+    FOR i:=0 TO n DO
+      Out.WriteStr("Enter a number: ");
+      In.ReadInt(arr[i]);
+    END;
+  
+    FOR i:=0 TO n-1 DO
+      FOR j:=0 TO n-i-1 DO
+        IF arr[j]>arr[j+1] THEN
+          temp:=arr[j];
+          arr[j]:=arr[j+1];
+          arr[j+1]:=temp;
+        END;
+      END; 
+    END;
+
+    FOR i:=0 TO n DO
+      Out.WriteInt(arr[i]);
+      Out.WriteStr(" ");
+    END;
+  ELSE
+    Out.WriteStr("Array size must be between 0 and 100!");
+  END;
+END DemoSort.

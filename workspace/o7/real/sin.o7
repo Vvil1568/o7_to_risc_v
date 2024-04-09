@@ -1,0 +1,45 @@
+MODULE DemoFPSin;
+
+IMPORT In, Out;
+
+VAR
+  eps, x : REAL;
+
+PROCEDURE SIN(x : REAL) : REAL;
+VAR 
+  res, step, pow, fact, factBase : REAL; 
+  i:INTEGER;
+BEGIN
+  i := 0;
+  res := 0.0;
+  factBase:=1.0;
+  fact := 1.0;
+  pow := x;
+  step := pow / fact;
+  WHILE step > eps DO
+    IF i MOD 2 = 0 THEN
+      res:=res+step;
+    ELSE
+      res:=res-step;
+    END;
+    pow:=pow*x*x;
+    fact:=fact*(factBase+1.0)*(factBase+2.0);
+    factBase:=factBase+2.0;
+    step := pow / fact;
+    i:=i+1;
+  END;
+  RETURN res
+END SIN;
+
+BEGIN
+  Out.WriteStr("Enter epsilon: ");
+  In.ReadReal(eps);
+  IF eps > 0.0 THEN
+    Out.WriteStr("Enter x: ");
+    In.ReadReal(x);
+    Out.WriteStr("sin(x): ");
+    Out.WriteReal(SIN(x));
+  ELSE
+    Out.WriteStr("epsilon must be positive!");
+  END;
+END DemoFloatingPoint.

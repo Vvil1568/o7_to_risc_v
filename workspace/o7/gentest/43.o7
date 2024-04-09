@@ -1,0 +1,13 @@
+MODULE TestManyArg;
+
+VAR
+  res : INTEGER;
+
+PROCEDURE SUM(a, b, c, d, e, f, g, h, i, j, k: INTEGER): INTEGER;
+BEGIN
+ RETURN a+b+c+d+e+f+g+h+i+j+k
+END GCD; 
+
+BEGIN 
+  res := SUM(1,2,3,4,5,6,7,8,9,10,11);
+END TestManyArg.

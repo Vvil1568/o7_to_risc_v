@@ -4,6 +4,7 @@
 #include <vector>
 #include <string>
 #include <stack>
+#include <set>
 
 //Структура описывает кадр стека контекста
 struct ContextStackFrame {
@@ -18,24 +19,53 @@ struct ContextStackFrame {
 //Контекст кодогенератора
 class CodeGenContext {
 public:
+	
 	static CodeGenContext& getInstance() {
 		static CodeGenContext instance;
 		return instance;
 	}
-
+	bool enableComments = true;
 	static void addCodeLine(std::string line) {
 		getInstance().code.push_back(getInstance().codeIndent + line);
 	}
 	static void addDataLine(std::string line) {
 		getInstance().data.push_back(getInstance().dataIndent + line);
 	}
+	static void addCodeComment(std::string line) {
+		if(getInstance().enableComments)
+			addCodeLine("#" + line);
+	}
+	static void addDataComment(std::string line) {
+		if (getInstance().enableComments)
+			addDataLine("#" + line);
+	}
 	static std::string getStrLitLabel() {
 		getInstance().strLitCount++;
 		return "literal_str_" + std::to_string(getInstance().strLitCount);
 	}
+	static bool adRealLitLabel(std::string label) {
+		int size = getInstance().realLabels.size();
+		getInstance().realLabels.insert(label);
+		return getInstance().realLabels.size()>size;
+	}
+
+
+	static std::string getLabelName(std::string name) {
+		std::string labelName = "";
+		bool first = true;
+		for (auto it = getInstance().contextStack.begin(); it != getInstance().contextStack.end(); it++) {
+			if (!first) {
+				labelName += "_";
+			}
+			first = false;
+			labelName += (*it).name;
+		}
+		return labelName+"_"+name;
+	}
+
 	static std::string pushContext(std::string name) {
 		if (name == "if" || name == "case" || name == "for" || name == "while" || name == "repeat") {
-			ContextStackFrame top = getInstance().contextStack.back();
+			ContextStackFrame& top = getInstance().contextStack.back();
 			if (name == "if") {
 				top.ifCount++;
 				name += std::to_string(top.ifCount);
@@ -84,6 +114,8 @@ public:
 	std::vector<std::string> data;
 	std::string dataIndent;
 	std::string codeIndent;
+	std::set<std::string> realLabels;
+	bool isInProc;
 private:
 	std::vector<ContextStackFrame> contextStack;
 	int strLitCount = 0;
