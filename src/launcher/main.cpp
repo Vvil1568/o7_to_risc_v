@@ -4,6 +4,7 @@
 #include <fstream>
 #include <sstream>
 #include <iterator>
+#include <cstring>
 // Начальные установки параметров компилятора и его запуск
 std::vector<std::string> Compile(const char* str, bool silent, bool fulldata);
 
